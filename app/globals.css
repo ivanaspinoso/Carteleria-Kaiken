@@ -164,6 +164,23 @@
 }
 
 /* ============================================================
+   Rotación por software (?rotar=90) — para PROBAR una pantalla
+   vertical en un monitor/TV horizontal sin girarlo físicamente.
+   El contenido se gira 90° y se dimensiona intercambiando ancho/alto
+   para llenar la pantalla horizontal.
+   ============================================================ */
+.rotador-90 {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  width: 100vh;
+  height: 100vw;
+  transform: translate(-50%, -50%) rotate(90deg);
+  transform-origin: center center;
+  overflow: hidden;
+}
+
+/* ============================================================
    TituloConLineas — "─── SABORES CLÁSICOS ───"
    Un solo trazo limpio a cada lado del texto (border-top que
    crece con flex-grow). Sin guion separado.

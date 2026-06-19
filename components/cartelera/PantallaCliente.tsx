@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect, useState } from "react";
+import { Maximize } from "lucide-react";
 import type { DatosPantalla } from "@/lib/types";
 import { usePantallaData } from "@/hooks/usePantallaData";
 import PantallaSabores from "./PantallaSabores";
@@ -18,6 +20,26 @@ interface Props {
 export default function PantallaCliente({ pantallaId, initial }: Props) {
   const { datos, offline, debug } = usePantallaData(pantallaId, initial);
   const { pantalla } = datos;
+
+  // ?rotar=90 → girar el contenido por software (para probar una pantalla
+  // vertical en un monitor horizontal sin tener que girarlo físicamente).
+  const [rotar, setRotar] = useState(false);
+  // Botón de pantalla completa (oculta las barras del navegador). Se esconde
+  // una vez en fullscreen.
+  const [enFullscreen, setEnFullscreen] = useState(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    setRotar(params.get("rotar") === "90");
+    const onFs = () => setEnFullscreen(Boolean(document.fullscreenElement));
+    document.addEventListener("fullscreenchange", onFs);
+    onFs();
+    return () => document.removeEventListener("fullscreenchange", onFs);
+  }, []);
+
+  function entrarFullscreen() {
+    document.documentElement.requestFullscreen?.().catch(() => {});
+  }
 
   function renderTemplate() {
     switch (pantalla.template) {
@@ -49,9 +71,28 @@ export default function PantallaCliente({ pantallaId, initial }: Props) {
   }
 
   return (
+    <div className={rotar ? "rotador-90" : undefined}>
     <div className="marco-pantalla">
       <div className="marco-pantalla__lienzo" data-orientacion={pantalla.orientacion}>
       {renderTemplate()}
+
+      {/* Botón de pantalla completa (oculta barras del navegador). Desaparece
+          una vez en fullscreen. Útil para el TV en modo kiosk. */}
+      {!enFullscreen && (
+        <button
+          type="button"
+          onClick={entrarFullscreen}
+          aria-label="Pantalla completa"
+          style={{
+            position: "fixed", bottom: "1.2vmin", right: "1.2vmin",
+            background: "rgba(0,0,0,0.55)", color: "#fff", border: "none",
+            borderRadius: "0.8vmin", padding: "1vmin", cursor: "pointer",
+            zIndex: 200, display: "flex", lineHeight: 0,
+          }}
+        >
+          <Maximize size={20} />
+        </button>
+      )}
 
       {/* Indicador offline */}
       {offline && (
@@ -92,6 +133,7 @@ export default function PantallaCliente({ pantallaId, initial }: Props) {
         </div>
       )}
       </div>
+    </div>
     </div>
   );
 }
