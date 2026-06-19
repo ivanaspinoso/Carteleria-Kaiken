@@ -178,6 +178,15 @@
   transform: translate(-50%, -50%) rotate(90deg);
   transform-origin: center center;
   overflow: hidden;
+  /* Forzar a que todo el subárbol se componga junto y rote con el contenedor. */
+  will-change: transform;
+}
+/* Los <video> a veces se pintan en una capa de overlay del hardware que NO
+   respeta el rotate del ancestro (se ven sin rotar). translateZ(0) los fuerza
+   a la capa compuesta normal, así rotan junto con el resto. */
+.rotador-90 video,
+.rotador-90 img {
+  transform: translateZ(0);
 }
 
 /* ============================================================
