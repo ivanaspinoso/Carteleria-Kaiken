@@ -41,8 +41,17 @@ export async function middleware(request: NextRequest) {
   const host = getHostname(request);
   const { pathname } = request.nextUrl;
 
-  const esAdmin     = ADMIN_HOSTS.has(host);
   const esCartelera = CARTELERA_HOSTS.has(host);
+  // Todo host que no sea cartelera se trata como admin (incluye el dominio de
+  // Vercel y cualquier dominio único sin subdominios configurados).
+  const esAdmin = !esCartelera;
+  // Subdominios admin DEDICADOS: solo muestran el panel (carteleras → 404).
+  const esAdminDedicado =
+    host === (process.env.NEXT_PUBLIC_ADMIN_HOST ?? "admin.heladeria.com") ||
+    host === "admin.local.test";
+  // En el resto (localhost, *.vercel.app, dominio único) conviven admin y
+  // carteleras en el mismo dominio → /pantalla/* permitido.
+  const esDual = !esAdminDedicado;
   // "/pantalla/" y no "/pantallas" (ruta del admin)
   const esPantalla  = pathname === "/pantalla" || pathname.startsWith("/pantalla/");
 
@@ -59,19 +68,19 @@ export async function middleware(request: NextRequest) {
   }
 
   // ── COMPORTAMIENTO 2 ─────────────────────────────────────────
-  // Admin: bloquear /pantalla/* (excepto en localhost, donde conviven ambas rutas)
+  // Admin (default para todo host que no sea cartelera).
   if (esAdmin) {
-    const esLocalhost = host === "localhost" || host === "127.0.0.1";
     if (esPantalla) {
-      // En producción: 404. En dev: pasar sin auth (las carteleras son públicas)
-      if (!esLocalhost) return new NextResponse(null, { status: 404 });
+      // En subdominio admin dedicado: 404. En dual (localhost/Vercel/dominio
+      // único): las carteleras son públicas, pasar sin auth.
+      if (!esDual) return new NextResponse(null, { status: 404 });
       return NextResponse.next({ request: { headers: reqHeaders } });
     }
     // ── COMPORTAMIENTO 3: auth ────────────────────────────────
     return handleAdminAuth(request, pathname, reqHeaders);
   }
 
-  // Host desconocido → 404 para todo
+  // (inalcanzable: esAdmin = !esCartelera cubre todos los hosts)
   return new NextResponse(null, { status: 404 });
 }
 
