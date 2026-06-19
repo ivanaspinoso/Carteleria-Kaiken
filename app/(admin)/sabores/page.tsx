@@ -14,7 +14,7 @@ export default async function SaboresPage() {
     { data: pantallas },
     { data: promos },
   ] = await Promise.all([
-    supabase.from("categorias").select("*").eq("tipo", "helado").eq("activa", true).order("orden"),
+    supabase.from("categorias").select("*").in("tipo", ["helado-clasico", "helado-especial"]).eq("activa", true).order("orden"),
     supabase.from("productos").select("*").order("orden"),
     supabase.from("pantallas").select("ultima_conex, activa"),
     supabase.from("promos").select("titulo, tipo").eq("activa", true),
@@ -40,7 +40,7 @@ export default async function SaboresPage() {
           <div className="text-xs text-muted-foreground mt-0.5">Sabores</div>
         </div>
         <div className="rounded-xl border bg-card p-3 text-center">
-          <div className={`text-2xl font-bold ${promoActiva ? "text-yellow-500" : "text-muted-foreground"}`}>
+          <div className={`text-2xl font-bold ${promoActiva ? "text-primary" : "text-muted-foreground"}`}>
             {promoActiva ? "★" : "—"}
           </div>
           <div className="text-xs text-muted-foreground mt-0.5">

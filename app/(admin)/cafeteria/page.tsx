@@ -10,7 +10,7 @@ export default async function CafeteriaPage() {
   const { data: categorias } = await supabase
     .from("categorias")
     .select("*")
-    .eq("tipo", "cafeteria")
+    .in("tipo", ["cafeteria", "pasteleria"])
     .eq("activa", true)
     .order("orden");
 

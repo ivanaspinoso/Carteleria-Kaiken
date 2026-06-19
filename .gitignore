@@ -42,3 +42,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Capturas temporales de calibración pixel-perfect (scripts de screenshot)
+scripts/_*.png

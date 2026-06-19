@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import type { Json } from "@/lib/supabase/database.types";
+import type { TablesUpdate } from "@/lib/types";
 
 export type Resultado = { error: string } | { ok: true };
 
@@ -37,7 +38,10 @@ async function insertarLog(
 
 export async function actualizarPrecio(
   id: string,
-  nuevoPrecio: number | null
+  nuevoPrecio: number | null,
+  // "precio" = precio principal (o "Chico" en postres con dos tamaños);
+  // "precio_alt" = segundo precio ("Grande").
+  campo: "precio" | "precio_alt" = "precio"
 ): Promise<Resultado> {
   const errorValidacion = validarPrecio(nuevoPrecio);
   if (errorValidacion) return { error: errorValidacion };
@@ -46,23 +50,53 @@ export async function actualizarPrecio(
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: "No autenticado" };
 
-  // Leer precio anterior para el log
+  // Leer valor anterior para el log
   const { data: anterior } = await supabase
     .from("productos")
-    .select("precio")
+    .select("precio, precio_alt")
+    .eq("id", id)
+    .single();
+
+  const update: TablesUpdate<"productos"> =
+    campo === "precio_alt" ? { precio_alt: nuevoPrecio } : { precio: nuevoPrecio };
+
+  const { error } = await supabase.from("productos").update(update).eq("id", id);
+
+  if (error) return { error: "Error al guardar el precio" };
+
+  await insertarLog(supabase, user.id, `update_${campo}`, "productos", id,
+    { [campo]: anterior?.[campo] ?? null },
+    { [campo]: nuevoPrecio }
+  );
+
+  revalidarProductos();
+  return { ok: true };
+}
+
+export async function actualizarGustosIncluidos(
+  id: string,
+  gustos: string[]
+): Promise<Resultado> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "No autenticado" };
+
+  const { data: anterior } = await supabase
+    .from("productos")
+    .select("gustos_incluidos")
     .eq("id", id)
     .single();
 
   const { error } = await supabase
     .from("productos")
-    .update({ precio: nuevoPrecio })
+    .update({ gustos_incluidos: gustos })
     .eq("id", id);
 
-  if (error) return { error: "Error al guardar el precio" };
+  if (error) return { error: "Error al guardar los gustos" };
 
-  await insertarLog(supabase, user.id, "update_precio", "productos", id,
-    { precio: anterior?.precio ?? null },
-    { precio: nuevoPrecio }
+  await insertarLog(supabase, user.id, "update_gustos", "productos", id,
+    { gustos_incluidos: (anterior?.gustos_incluidos as Json) ?? null },
+    { gustos_incluidos: gustos as unknown as Json }
   );
 
   revalidarProductos();

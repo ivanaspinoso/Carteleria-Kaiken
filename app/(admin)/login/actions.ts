@@ -54,6 +54,49 @@ export async function login(
   redirect(dest);
 }
 
+export type CambioState = { error: string } | { ok: string } | null;
+
+export async function cambiarPassword(
+  _prev: CambioState,
+  formData: FormData
+): Promise<CambioState> {
+  const email  = (formData.get("email")  ?? "").toString().trim();
+  const actual = (formData.get("actual") ?? "").toString();
+  const nueva  = (formData.get("nueva")  ?? "").toString();
+
+  if (!email || !actual || !nueva) {
+    return { error: "Completá todos los campos" };
+  }
+  if (nueva.length < 6) {
+    return { error: "La nueva contraseña debe tener al menos 6 caracteres" };
+  }
+  if (nueva === actual) {
+    return { error: "La nueva contraseña debe ser distinta a la actual" };
+  }
+
+  const supabase = await makeSupabase();
+
+  // 1) Validar la contraseña actual iniciando sesión
+  const { error: errLogin } = await supabase.auth.signInWithPassword({
+    email,
+    password: actual,
+  });
+  if (errLogin) {
+    return { error: "Email o contraseña actual incorrectos" };
+  }
+
+  // 2) Cambiar la contraseña del usuario ya autenticado
+  const { error: errUpdate } = await supabase.auth.updateUser({ password: nueva });
+  if (errUpdate) {
+    if (errUpdate.message.includes("should be different")) {
+      return { error: "La nueva contraseña debe ser distinta a la actual" };
+    }
+    return { error: "No se pudo cambiar la contraseña, intentá de nuevo" };
+  }
+
+  return { ok: "Contraseña actualizada. Ya podés ingresar con la nueva." };
+}
+
 export async function logout(): Promise<void> {
   const supabase = await makeSupabase();
   await supabase.auth.signOut();

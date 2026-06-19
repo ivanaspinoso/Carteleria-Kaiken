@@ -9,7 +9,7 @@ function ButtonInner() {
     <button
       type="submit"
       disabled={pending}
-      className="text-sm text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
+      className="text-xs font-medium text-muted-foreground border rounded-lg px-3 py-1.5 hover:bg-muted hover:text-foreground transition-colors disabled:opacity-50"
     >
       {pending ? "Saliendo…" : "Salir"}
     </button>

@@ -7,22 +7,27 @@ export const metadata: Metadata = { title: "Iniciar sesión" };
 export default function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      <div className="w-full max-w-sm space-y-6">
+      <div className="w-full max-w-sm space-y-7">
 
-        {/* Logo placeholder — TODO: reemplazar con logo real */}
-        <div className="text-center space-y-2">
-          <div className="w-16 h-16 bg-primary rounded-2xl mx-auto flex items-center justify-center select-none">
-            <span className="text-primary-foreground text-2xl">🍦</span>
+        {/* Logo + encabezado */}
+        <div className="text-center space-y-4">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/kaikenlogocompletoverde.PNG"
+            alt="Kaiken"
+            className="w-40 h-40 object-contain mx-auto"
+            style={{ mixBlendMode: "multiply" }}
+          />
+          <div className="space-y-1">
+            <h1 className="text-xl font-semibold tracking-tight">Panel de administración</h1>
+            <p className="text-sm text-muted-foreground">
+              Ingresá para gestionar la cartelería
+            </p>
           </div>
-          <h1 className="text-2xl font-bold tracking-tight">Panel Admin</h1>
-          {/* TODO: nombre real del negocio */}
-          <p className="text-muted-foreground text-sm">
-            Ingresá para gestionar la cartelería
-          </p>
         </div>
 
         {/* LoginForm necesita useSearchParams → Suspense obligatorio */}
-        <Suspense fallback={<div className="h-48 rounded-lg border animate-pulse bg-muted" />}>
+        <Suspense fallback={<div className="h-52 rounded-2xl border animate-pulse bg-muted" />}>
           <LoginForm />
         </Suspense>
 

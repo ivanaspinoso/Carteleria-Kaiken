@@ -12,6 +12,7 @@ export const productoSchema = z.object({
   precio: precioSchema,
   precio_alt: precioSchema,
   unidad: z.string().max(20).nullable().optional(),
+  imagen_url: z.string().max(300).nullable().optional(),
   en_stock: z.boolean(),
   destacado: z.boolean(),
   orden: z.number().int().min(0),
@@ -23,7 +24,10 @@ export const productoUpdateSchema = productoSchema.partial().extend({
 });
 
 export const promoSchema = z.object({
-  tipo: z.enum(["sabor_semana", "combo", "mensaje"]),
+  tipo: z.enum([
+    "sabor_semana", "combo", "mensaje",
+    "sabor_dia", "novedad_mes", "promo_especial",
+  ]),
   titulo: z.string().min(1).max(100),
   contenido: z.string().max(500).nullable().optional(),
   producto_id: z.string().uuid().nullable().optional(),
@@ -35,7 +39,12 @@ export const promoSchema = z.object({
 
 export const categoriaSchema = z.object({
   nombre: z.string().min(1).max(100),
-  tipo: z.enum(["helado", "cafeteria", "postre", "combo"]),
+  tipo: z.enum([
+    // Viejos (compatibilidad)
+    "helado", "combo",
+    // Reales de Kaikén
+    "helado-clasico", "helado-especial", "tamano", "postre", "cafeteria", "pasteleria",
+  ]),
   orden: z.number().int().min(0),
   activa: z.boolean(),
 });

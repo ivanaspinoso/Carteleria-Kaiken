@@ -1,189 +1,196 @@
 -- =============================================================
--- SEED DE DATOS DE PRUEBA — HELADERÍA FICTICIA
+-- SEED REAL DE KAIKÉN — heladería / cafetería
 -- =============================================================
--- ⚠️  TODO: REEMPLAZAR CON DATOS REALES DEL NEGOCIO
--- ⚠️  Todos los nombres, precios y descripciones son FICTICIOS.
--- ⚠️  Sirven solo para verificar que el sistema funciona.
--- ⚠️  Buscar "TODO: reemplazar" para encontrar todos los puntos.
+-- Nombres y categorías REALES del local.
+-- ⚠️  TODO: precios reales pendientes — los carga el dueño desde el admin.
+-- ⚠️  TODO: imágenes reales pendientes — Mora entrega los assets.
+-- ⚠️  Buscar "TODO" para encontrar todos los puntos pendientes.
 -- =============================================================
 
 -- Limpiar datos previos (para re-runs del seed)
-TRUNCATE TABLE logs, promos, productos, categorias, pantallas RESTART IDENTITY CASCADE;
+-- placas_fijas se borra por CASCADE al truncar pantallas; la listamos explícita
+-- para evitar el NOTICE y por si todavía no existe el FK.
+TRUNCATE TABLE logs, promos, productos, categorias, placas_fijas, pantallas RESTART IDENTITY CASCADE;
 
 -- =============================================================
--- PANTALLAS (5 fijas, IDs 1..5)
--- TODO: reemplazar nombres y templates según el layout real del local
+-- PANTALLAS REALES DE KAIKÉN (5 fijas, IDs 1..5)
+--   1 (vertical, 50")  — rotativa con 13 placas, desfase 0s
+--   2 (horizontal, 43") — Sabores Clásicos + Especiales
+--   3 (horizontal, 43") — Tamaños + Postres Helados
+--   4 (horizontal, 43") — Cafetería + Pastelería
+--   5 (vertical, 50")  — mismas 13 placas que P1, desfase 30s
 -- =============================================================
-INSERT INTO pantallas (id, nombre, template, pulgadas, config, activa) VALUES
-(1, 'Pantalla Principal 50"',   'rotativa',       50, '{
-  "rotacion": { "intervalMs": 8000, "categorias": [] },
-  "posiciones": {}
-}'::jsonb, true),
-
-(2, 'Pantalla Secundaria 50"',  'sabores_grande',  50, '{
-  "posiciones": {}
-}'::jsonb, true),
-
-(3, 'Cafetería 43"',            'cafeteria',       43, '{
-  "posiciones": {}
-}'::jsonb, true),
-
-(4, 'Sabores Fijo 43"',         'sabores_fijo',    43, '{
-  "posiciones": {}
-}'::jsonb, true),
-
-(5, 'Postres 43"',              'postres',         43, '{
-  "posiciones": {}
-}'::jsonb, true);
+INSERT INTO pantallas (id, nombre, template, pulgadas, orientacion, config, activa) VALUES
+(1, 'Vertical Izquierda',            'rotativa',                    50, 'vertical',   '{"desfase_segundos": 0}'::jsonb,  true),
+(2, 'Sabores Clásicos + Especiales', 'sabores-clasicos-especiales', 43, 'horizontal', '{}'::jsonb,                       true),
+(3, 'Tamaños + Postres Helados',     'tamanos-postres',             43, 'horizontal', '{}'::jsonb,                       true),
+(4, 'Cafetería + Pastelería',        'cafeteria-pasteleria',        43, 'horizontal', '{}'::jsonb,                       true),
+(5, 'Vertical Derecha',              'rotativa',                    50, 'vertical',   '{"desfase_segundos": 30}'::jsonb, true);
 
 -- =============================================================
--- CATEGORÍAS DE HELADOS
--- TODO: reemplazar con las categorías reales del local
+-- CATEGORÍAS REALES DE KAIKÉN
 -- =============================================================
 INSERT INTO categorias (id, nombre, tipo, orden, activa) VALUES
-('11111111-1111-1111-1111-000000000001', 'Cremas',           'helado', 1, true),
-('11111111-1111-1111-1111-000000000002', 'Chocolates',       'helado', 2, true),
-('11111111-1111-1111-1111-000000000003', 'Dulces de Leche',  'helado', 3, true),
-('11111111-1111-1111-1111-000000000004', 'Frutales',         'helado', 4, true),
-('11111111-1111-1111-1111-000000000005', 'Especiales',       'helado', 5, true),
--- Cafetería
-('22222222-2222-2222-2222-000000000001', 'Cafés',            'cafeteria', 1, true),
-('22222222-2222-2222-2222-000000000002', 'Infusiones',       'cafeteria', 2, true),
-('22222222-2222-2222-2222-000000000003', 'Pastelería',       'cafeteria', 3, true),
--- Postres y combos
-('33333333-3333-3333-3333-000000000001', 'Postres',          'postre',   1, true),
-('33333333-3333-3333-3333-000000000002', 'Combos',           'combo',    1, true);
+-- Helados clásicos (Pantalla 2)
+('11111111-1111-1111-1111-000000000001', 'Cremas',            'helado-clasico',  1, true),
+('11111111-1111-1111-1111-000000000002', 'Chocolate',         'helado-clasico',  2, true),
+('11111111-1111-1111-1111-000000000003', 'Frutales',          'helado-clasico',  3, true),
+('11111111-1111-1111-1111-000000000004', 'Dulce de Leche',    'helado-clasico',  4, true),
+('11111111-1111-1111-1111-000000000005', 'Sin Azúcar',        'helado-clasico',  5, true),
+-- Helados especiales (Pantalla 2)
+('22222222-2222-2222-2222-000000000001', 'Sabores Especiales','helado-especial', 1, true),
+-- Tamaños (Pantalla 3)
+('33333333-3333-3333-3333-000000000001', 'Vasos',             'tamano',          1, true),
+('33333333-3333-3333-3333-000000000002', 'Kilos',             'tamano',          2, true),
+('33333333-3333-3333-3333-000000000003', 'Kilos Especiales',  'tamano',          3, true),
+-- Postres helados (Pantalla 3)
+('44444444-4444-4444-4444-000000000001', 'Postres Helados',   'postre',          1, true),
+-- Cafetería (Pantalla 4)
+('55555555-5555-5555-5555-000000000001', 'Cafetería',         'cafeteria',       1, true),
+-- Pastelería (Pantalla 4)
+('66666666-6666-6666-6666-000000000001', 'Pastelería',        'pasteleria',      1, true);
 
 -- =============================================================
--- SABORES — CATEGORÍA: CREMAS
--- TODO: reemplazar con sabores reales + precios reales
+-- PRODUCTOS REALES DE KAIKÉN
+-- TODO: precios reales pendientes (precio / precio_alt en null)
+-- TODO: imagen real pendiente (imagen_url apunta a placeholders)
+-- Columnas: categoria_id, nombre, descripcion, precio, precio_alt, unidad, imagen_url, en_stock, destacado, orden
 -- =============================================================
-INSERT INTO productos (categoria_id, nombre, descripcion, precio, precio_alt, unidad, en_stock, destacado, orden) VALUES
-('11111111-1111-1111-1111-000000000001', 'Vainilla Clásica',       'Sabor tradicional con vainilla bourbon',  1800, 3200, 'kg', true,  true,  1),
-('11111111-1111-1111-1111-000000000001', 'Crema del Uruguay',      'Suave y cremosa, sin agregados',          1900, 3400, 'kg', true,  false, 2),
-('11111111-1111-1111-1111-000000000001', 'Tramontana',             'Crema con chips de chocolate',            2000, 3600, 'kg', true,  false, 3),
-('11111111-1111-1111-1111-000000000001', 'Americana',              'Mantecado estilo americano',              1750, 3100, 'kg', true,  false, 4),
-('11111111-1111-1111-1111-000000000001', 'Crema Oreo',             'Crema con galletitas trituradas',         2100, 3800, 'kg', false, false, 5),
+INSERT INTO productos (categoria_id, nombre, descripcion, precio, precio_alt, unidad, imagen_url, en_stock, destacado, orden) VALUES
+
+-- ===== HELADOS CLÁSICOS — Cremas =====
+('11111111-1111-1111-1111-000000000001', 'Vainilla',         null, null, null, null, null, true, false, 1),
+('11111111-1111-1111-1111-000000000001', 'Oreo',             null, null, null, null, null, true, false, 2),
+('11111111-1111-1111-1111-000000000001', 'Crema del Cielo',  null, null, null, null, null, true, false, 3),
+('11111111-1111-1111-1111-000000000001', 'Almendrado',       null, null, null, null, null, true, false, 4),
+('11111111-1111-1111-1111-000000000001', 'Americana',        null, null, null, null, null, true, false, 5),
+('11111111-1111-1111-1111-000000000001', 'Menta Granizada',  null, null, null, null, null, true, false, 6),
+('11111111-1111-1111-1111-000000000001', 'Sambayón',         null, null, null, null, null, true, false, 7),
+('11111111-1111-1111-1111-000000000001', 'Mascarpone',       null, null, null, null, null, true, false, 8),
+
+-- ===== HELADOS CLÁSICOS — Chocolate =====
+('11111111-1111-1111-1111-000000000002', 'Clásico',             null, null, null, null, null, true, false, 1),
+('11111111-1111-1111-1111-000000000002', 'Blanco',              null, null, null, null, null, true, false, 2),
+('11111111-1111-1111-1111-000000000002', 'Cacao 80%',           null, null, null, null, null, true, false, 3),
+('11111111-1111-1111-1111-000000000002', 'Volcán de Chocolate', null, null, null, null, null, true, false, 4),
+('11111111-1111-1111-1111-000000000002', 'Kaikén',              null, null, null, null, null, true, false, 5),
+
+-- ===== HELADOS CLÁSICOS — Frutales =====
+('11111111-1111-1111-1111-000000000003', 'Limón',              null, null, null, null, null, true, false, 1),
+('11111111-1111-1111-1111-000000000003', 'Mandarina',          null, null, null, null, null, true, false, 2),
+('11111111-1111-1111-1111-000000000003', 'Pera',               null, null, null, null, null, true, false, 3),
+('11111111-1111-1111-1111-000000000003', 'Melón',              null, null, null, null, null, true, false, 4),
+('11111111-1111-1111-1111-000000000003', 'Frutilla al agua',   null, null, null, null, null, true, false, 5),
+('11111111-1111-1111-1111-000000000003', 'Frutilla a la crema',null, null, null, null, null, true, false, 6),
+('11111111-1111-1111-1111-000000000003', 'Sandía',             null, null, null, null, null, true, false, 7),
+
+-- ===== HELADOS CLÁSICOS — Dulce de Leche =====
+('11111111-1111-1111-1111-000000000004', 'Clásico',     null, null, null, null, null, true, false, 1),
+('11111111-1111-1111-1111-000000000004', 'Granizado',   null, null, null, null, null, true, false, 2),
+('11111111-1111-1111-1111-000000000004', 'Colonial',    null, null, null, null, null, true, false, 3),
+('11111111-1111-1111-1111-000000000004', 'Con Brownie', null, null, null, null, null, true, false, 4),
+('11111111-1111-1111-1111-000000000004', 'Con Bombón',  null, null, null, null, null, true, false, 5),
+
+-- ===== HELADOS CLÁSICOS — Sin Azúcar =====
+('11111111-1111-1111-1111-000000000005', 'Frutilla',        null, null, null, null, null, true, false, 1),
+('11111111-1111-1111-1111-000000000005', 'Durazno',         null, null, null, null, null, true, false, 2),
+('11111111-1111-1111-1111-000000000005', 'Dulce de Leche',  null, null, null, null, null, true, false, 3),
+('11111111-1111-1111-1111-000000000005', 'Americana',       null, null, null, null, null, true, false, 4),
+('11111111-1111-1111-1111-000000000005', 'Chocolate',       null, null, null, null, null, true, false, 5),
+
+-- ===== SABORES ESPECIALES (con descripción + imagen placeholder) =====
+('22222222-2222-2222-2222-000000000001', 'Frambuesa Patagónica', 'Frambuesa a la crema con frambuesas bañadas en choco blanco y negro', null, null, null, '/sabores/frambuesa-patagonica.png', true, false, 1),
+('22222222-2222-2222-2222-000000000001', 'Volcán de Chocolate',  'Chocolate con frutos rojos y torta volcán',                          null, null, null, '/sabores/volcan-chocolate.png',     true, false, 2),
+('22222222-2222-2222-2222-000000000001', 'Vainilla Kaikén',      'Vainilla con dulce de leche natural y almendras garrapiñadas',       null, null, null, '/sabores/vainilla-kaiken.png',      true, false, 3),
+('22222222-2222-2222-2222-000000000001', 'Pistacho',             'Pistacho a la crema con pistachos tostados en trozos',               null, null, null, '/sabores/pistacho.png',             true, false, 4),
+('22222222-2222-2222-2222-000000000001', 'Chocorock',            'Chocolate con cucuruchos bañados en chocolate y dulce de leche natural', null, null, null, '/sabores/chocorock.png',        true, false, 5),
+('22222222-2222-2222-2222-000000000001', 'Raffaelo',             'Chocolate blanco con coco y crocante de almendras',                  null, null, null, '/sabores/raffaelo.png',             true, false, 6),
+('22222222-2222-2222-2222-000000000001', 'Pavlova',              'Crema americana con frutos rojos y merengue',                        null, null, null, '/sabores/pavlova.png',              true, false, 7),
+('22222222-2222-2222-2222-000000000001', 'Marquise',             'Chocolate con dulce de leche natural y merengue italiano',           null, null, null, '/sabores/marquise.png',             true, false, 8),
+('22222222-2222-2222-2222-000000000001', 'ChocoMenta',           'Chocolate semi amargo con menta fresca',                             null, null, null, '/sabores/chocomenta.png',           true, false, 9),
+
+-- ===== TAMAÑOS — Vasos (íconos placeholder) =====
+('33333333-3333-3333-3333-000000000001', 'Grande',     null, null, null, null, '/iconos/vaso-grande.png',   true, false, 1),
+('33333333-3333-3333-3333-000000000001', 'Mediano',    null, null, null, null, '/iconos/vaso-mediano.png',  true, false, 2),
+('33333333-3333-3333-3333-000000000001', 'Chico',      null, null, null, null, '/iconos/vaso-chico.png',    true, false, 3),
+('33333333-3333-3333-3333-000000000001', 'Cucurucho',  null, null, null, null, '/iconos/cucurucho.png',     true, false, 4),
+('33333333-3333-3333-3333-000000000001', 'Milkshake',  null, null, null, null, '/iconos/milkshake.png',     true, false, 5),
+
+-- ===== TAMAÑOS — Kilos (íconos placeholder) =====
+('33333333-3333-3333-3333-000000000002', '1 Kilo',     null, null, null, null, '/iconos/kilo.png',        true, false, 1),
+('33333333-3333-3333-3333-000000000002', '1/2 Kilo',   null, null, null, null, '/iconos/medio-kilo.png',  true, false, 2),
+('33333333-3333-3333-3333-000000000002', '1/4 Kilo',   null, null, null, null, '/iconos/cuarto-kilo.png', true, false, 3),
+
+-- ===== TAMAÑOS — Kilos Especiales (sin imagen, solo texto) =====
+('33333333-3333-3333-3333-000000000003', 'Kilo Kaikén',   null, null, null, null, null, true, false, 1),
+('33333333-3333-3333-3333-000000000003', 'Kilo Pistacho', null, null, null, null, null, true, false, 2),
+
+-- ===== POSTRES HELADOS (algunos con precio_alt para Chico / Grande) =====
+('44444444-4444-4444-4444-000000000001', 'Bombón degustación x6',         null, null, null, null, null, true, false, 1),
+('44444444-4444-4444-4444-000000000001', 'Bombón x1',                     null, null, null, null, null, true, false, 2),
+('44444444-4444-4444-4444-000000000001', 'Torta Pistacchio',             null, null, null, null, null, true, false, 3),
+('44444444-4444-4444-4444-000000000001', 'Tronco Choco y Dulce de leche', null, null, null, null, null, true, false, 4),
+('44444444-4444-4444-4444-000000000001', 'Tronco Americana y Frutilla',   null, null, null, null, null, true, false, 5),
+-- los siguientes soportan precio_alt (Chico / Grande); el dueño carga ambos precios
+('44444444-4444-4444-4444-000000000001', 'Almendrado',        null, null, null, null, null, true, false, 6),
+('44444444-4444-4444-4444-000000000001', 'Barra Patagónica',  null, null, null, null, null, true, false, 7),
+('44444444-4444-4444-4444-000000000001', 'Cheesecake',        null, null, null, null, null, true, false, 8),
+('44444444-4444-4444-4444-000000000001', 'Oreo',              null, null, null, null, null, true, false, 9),
+('44444444-4444-4444-4444-000000000001', 'Postre Kaikén',     null, null, null, null, null, true, false, 10),
+
+-- ===== CAFETERÍA (volumen en `unidad`) =====
+('55555555-5555-5555-5555-000000000001', 'Expresso',       null, null, null, '30ml',  null, true, false, 1),
+('55555555-5555-5555-5555-000000000001', 'Expreso doble',  null, null, null, '60ml',  null, true, false, 2),
+('55555555-5555-5555-5555-000000000001', 'Americano',      null, null, null, '240ml', null, true, false, 3),
+('55555555-5555-5555-5555-000000000001', 'Lungo',          null, null, null, '60ml',  null, true, false, 4),
+('55555555-5555-5555-5555-000000000001', 'Cortado',        null, null, null, '30ml',  null, true, false, 5),
+('55555555-5555-5555-5555-000000000001', 'Mocca',          null, null, null, '160ml', null, true, false, 6),
+('55555555-5555-5555-5555-000000000001', 'Latte',          null, null, null, '240ml', null, true, false, 7),
+('55555555-5555-5555-5555-000000000001', 'Flat White',     null, null, null, '180ml', null, true, false, 8),
+('55555555-5555-5555-5555-000000000001', 'Frappuccino',    null, null, null, '280ml', null, true, false, 9),
+('55555555-5555-5555-5555-000000000001', 'Affogato',       null, null, null, '30ml',  null, true, false, 10),
+
+-- ===== PASTELERÍA =====
+('66666666-6666-6666-6666-000000000001', 'Medialuna',                null, null, null, null, null, true, false, 1),
+('66666666-6666-6666-6666-000000000001', 'Medialuna c/jamón y queso',null, null, null, null, null, true, false, 2),
+('66666666-6666-6666-6666-000000000001', 'Galletita Tentación',      null, null, null, null, null, true, false, 3),
+('66666666-6666-6666-6666-000000000001', 'Porción de Budín',         null, null, null, null, null, true, false, 4),
+('66666666-6666-6666-6666-000000000001', 'HavaTart',                 null, null, null, null, null, true, false, 5),
+('66666666-6666-6666-6666-000000000001', 'Brownies',                 null, null, null, null, null, true, false, 6),
+('66666666-6666-6666-6666-000000000001', 'Cookie NY',                null, null, null, null, null, true, false, 7),
+('66666666-6666-6666-6666-000000000001', 'Cookie Pistacho',          null, null, null, null, null, true, false, 8);
 
 -- =============================================================
--- SABORES — CATEGORÍA: CHOCOLATES
--- TODO: reemplazar con sabores y precios reales
+-- PROMOS EDITABLES DE KAIKÉN (las 3 placas con recuadro editable)
+-- Arrancan inactivas y vacías; el dueño las completa desde /promos.
 -- =============================================================
-('11111111-1111-1111-1111-000000000002', 'Chocolate Amargo',       'Intenso, 70% cacao',                     1900, 3400, 'kg', true,  true,  1),
-('11111111-1111-1111-1111-000000000002', 'Chocolate con Leche',    'Suave y equilibrado',                    1800, 3200, 'kg', true,  false, 2),
-('11111111-1111-1111-1111-000000000002', 'Brownie',                'Chocolate con trozos de brownie',         2200, 4000, 'kg', true,  true,  3),
-('11111111-1111-1111-1111-000000000002', 'Chocolate Blanco',       'Cremoso con esencia de vainilla',         1950, 3500, 'kg', true,  false, 4),
-('11111111-1111-1111-1111-000000000002', 'Marquise',               'Chocolate con almendras',                 2300, 4200, 'kg', false, false, 5),
-
--- =============================================================
--- SABORES — CATEGORÍA: DULCES DE LECHE
--- TODO: reemplazar con sabores y precios reales
--- =============================================================
-('11111111-1111-1111-1111-000000000003', 'Dulce de Leche Granizado','Con chips de chocolate',                 2000, 3600, 'kg', true,  true,  1),
-('11111111-1111-1111-1111-000000000003', 'Dulce de Leche Clásico',  'El favorito de siempre',                1900, 3400, 'kg', true,  false, 2),
-('11111111-1111-1111-1111-000000000003', 'Dulce de Leche Brownie',  'Con trozos de brownie de DL',           2200, 4000, 'kg', true,  false, 3),
-('11111111-1111-1111-1111-000000000003', 'Sambayón',                'Dulce de leche con yemas y vino',        2400, 4400, 'kg', true,  false, 4),
-
--- =============================================================
--- SABORES — CATEGORÍA: FRUTALES
--- TODO: reemplazar con sabores y precios reales
--- =============================================================
-('11111111-1111-1111-1111-000000000004', 'Frutilla',               'Con trozos de frutilla fresca',           1800, 3200, 'kg', true,  true,  1),
-('11111111-1111-1111-1111-000000000004', 'Limón',                  'Fresco y ácido, sin leche',               1700, 3000, 'kg', true,  false, 2),
-('11111111-1111-1111-1111-000000000004', 'Naranja y Jengibre',     'Frutal con toque picante',                1900, 3400, 'kg', true,  false, 3),
-('11111111-1111-1111-1111-000000000004', 'Mango',                  'Tropical, sin lactosa',                   1950, 3500, 'kg', true,  false, 4),
-('11111111-1111-1111-1111-000000000004', 'Maracuyá',               'Frutal y ácido',                          1950, 3500, 'kg', false, false, 5),
-('11111111-1111-1111-1111-000000000004', 'Pomelo Rosado',          'Fresco con toque amargo',                 1800, 3200, 'kg', true,  false, 6),
-
--- =============================================================
--- SABORES — CATEGORÍA: ESPECIALES
--- TODO: reemplazar con sabores y precios reales
--- =============================================================
-('11111111-1111-1111-1111-000000000005', 'Pistacho',               'Con pistacho italiano',                   2800, 5200, 'kg', true,  true,  1),
-('11111111-1111-1111-1111-000000000005', 'Tiramisú',               'Café, mascarpone y bizcochuelo',          2600, 4800, 'kg', true,  true,  2),
-('11111111-1111-1111-1111-000000000005', 'Cheesecake de Frutos Rojos','Queso crema y coulis de frutos rojos', 2500, 4600, 'kg', true,  false, 3),
-('11111111-1111-1111-1111-000000000005', 'Matcha',                 'Con té matcha japonés',                   2700, 5000, 'kg', false, false, 4),
-('11111111-1111-1111-1111-000000000005', 'Stracciatella',          'Crema con hilos de chocolate',            2200, 4000, 'kg', true,  false, 5),
-
--- =============================================================
--- CAFETERÍA — CAFÉS
--- TODO: reemplazar con productos y precios reales
--- =============================================================
-('22222222-2222-2222-2222-000000000001', 'Espresso',               'Doble shot, intenso',                     1200, null, null, true,  false, 1),
-('22222222-2222-2222-2222-000000000001', 'Cortado',                'Espresso con splash de leche',            1300, null, null, true,  false, 2),
-('22222222-2222-2222-2222-000000000001', 'Café con Leche',         'Espresso + leche caliente',               1500, null, null, true,  true,  3),
-('22222222-2222-2222-2222-000000000001', 'Cappuccino',             'Espresso + leche vaporizada + espuma',    1700, null, null, true,  false, 4),
-('22222222-2222-2222-2222-000000000001', 'Latte Macchiato',        'Leche + espresso encima',                 1800, null, null, true,  false, 5),
-('22222222-2222-2222-2222-000000000001', 'Frappé de Café',         'Café frío batido con crema',              2200, null, null, true,  false, 6),
-
--- =============================================================
--- CAFETERÍA — INFUSIONES
--- TODO: reemplazar con productos y precios reales
--- =============================================================
-('22222222-2222-2222-2222-000000000002', 'Té en saquito',          'Variedad a elección',                     900,  null, null, true,  false, 1),
-('22222222-2222-2222-2222-000000000002', 'Té Chai Latte',          'Té especiado con leche vaporizada',       1800, null, null, true,  false, 2),
-
--- =============================================================
--- CAFETERÍA — PASTELERÍA
--- TODO: reemplazar con productos y precios reales
--- =============================================================
-('22222222-2222-2222-2222-000000000003', 'Medialuna',              'De manteca, recién horneada',              800, null, null, true,  false, 1),
-('22222222-2222-2222-2222-000000000003', 'Tostado mixto',          'Jamón y queso en pan de miga',            1400, null, null, true,  true,  2),
-('22222222-2222-2222-2222-000000000003', 'Cheesecake del día',     'Porción del postre del día',              2200, null, null, true,  false, 3),
-
--- =============================================================
--- POSTRES
--- TODO: reemplazar con productos y precios reales
--- =============================================================
-('33333333-3333-3333-3333-000000000001', 'Sundae Clásico',         '2 bochas + salsa chocolate + crema',      2800, null, null, true,  true,  1),
-('33333333-3333-3333-3333-000000000001', 'Copa Brownie',           '1 bocha + brownie + dulce de leche',      3200, null, null, true,  false, 2),
-('33333333-3333-3333-3333-000000000001', 'Banana Split',           'Banana + 3 bochas + 3 salsas',            3800, null, null, true,  false, 3),
-('33333333-3333-3333-3333-000000000001', 'Helado con Brownie',     '2 bochas sobre brownie tibio',            3500, null, null, false, false, 4),
-('33333333-3333-3333-3333-000000000001', 'Copa Tropical',          'Mango + frutilla + sorbete cítrico',      3000, null, null, true,  false, 5),
-
--- =============================================================
--- COMBOS
--- TODO: reemplazar con combos y precios reales del local
--- =============================================================
-('33333333-3333-3333-3333-000000000002', 'Combo Café + Helado',    '1 café + 1 bocha a elección',             2500, null, null, true,  true,  1),
-('33333333-3333-3333-3333-000000000002', 'Combo Almuerzo Dulce',   'Tostado + café + 1 bocha',                3200, null, null, true,  false, 2),
-('33333333-3333-3333-3333-000000000002', 'Combo Pareja',           '2 cafés + 1 postre a elección',           4500, null, null, true,  false, 3);
-
--- =============================================================
--- PROMOS
--- TODO: reemplazar con promociones reales del negocio
--- =============================================================
-
--- Para la promo sabor_semana necesitamos el id de un producto
--- Usamos Tiramisú (un especial)
 INSERT INTO promos (tipo, titulo, contenido, producto_id, activa, orden) VALUES
-(
-  'sabor_semana',
-  'Sabor de la Semana',
-  -- TODO: reemplazar con descripción real de la promo
-  'Esta semana te recomendamos este sabor especial. ¡Preguntá por las combinaciones!',
-  (SELECT id FROM productos WHERE nombre = 'Tiramisú' LIMIT 1),
-  true,
-  1
-),
-(
-  'combo',
-  -- TODO: reemplazar con combo y precio real
-  'Combo Tarde Feliz — 15 a 18hs',
-  'Café + 1 bocha a elección por precio especial. Solo en horario indicado.',
-  (SELECT id FROM productos WHERE nombre = 'Combo Café + Helado' LIMIT 1),
-  true,
-  2
-),
-(
-  'mensaje',
-  -- TODO: reemplazar con mensaje real del local
-  'Pagá con débito sin recargo',
-  'Aceptamos todas las tarjetas de débito y crédito sin costo adicional.',
-  null,
-  false,  -- inactiva por defecto
-  3
-);
+('sabor_dia',      'Gusto del día',   null, null, false, 1),
+('novedad_mes',    'Novedad del mes', null, null, false, 2),
+('promo_especial', 'Promo especial',  null, null, false, 3);
+
+-- =============================================================
+-- PLACAS FIJAS por pantalla
+--   P1 (primera): promos, menú y productos (todo menos seguinos/QR)
+--   P5 (última):  entretenimiento — Seguinos + QR (+ los videos que se
+--                 sumarán después, los sube el dueño desde el admin)
+-- =============================================================
+INSERT INTO placas_fijas (pantalla_id, slug, nombre, componente, orden) VALUES
+-- Pantalla 1
+(1, 'antojo-de-tarde',      'Antojo de Tarde',            'PlacaAntojoDeTarde',       1),
+(1, 'promo-especial',       'Promo Especial',             'PlacaPromoEspecial',       2),
+(1, 'despues-cole-tostado', 'Después del Cole (Tostado)', 'PlacaDespuesColeTostado',  3),
+(1, 'despues-cole-budin',   'Después del Cole (Budín)',   'PlacaDespuesColeBudin',    4),
+(1, 'cuartos',              'Cuartos',                    'PlacaCuartos',             5),
+(1, 'diez-off',             '10% OFF',                    'PlacaDiezOff',             6),
+(1, 'kilo-kaiken',          'Kilo Kaikén',                'PlacaKiloKaiken',          7),
+(1, 'gusto-del-dia',        'Gusto del Día',              'PlacaGustoDelDia',         8),
+(1, 'novedad-del-mes',      'Novedad del Mes',            'PlacaNovedadDelMes',       9),
+(1, 'affogato',             'Affogato',                   'PlacaAffogato',           10),
+(1, 'frappuccino',          'Frappuccino',                'PlacaFrappuccino',        11),
+-- Pantalla 5
+(5, 'seguinos',             'Seguinos en las Redes',      'PlacaSeguinos',            1),
+(5, 'qr-delivery',          'QR Delivery',                'PlacaQRDelivery',          2);
 
 -- =============================================================
 -- Verificación final

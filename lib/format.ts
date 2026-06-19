@@ -7,12 +7,13 @@ export function formatPrecio(
   if (opciones?.sinStock) return "Sin Stock";
   if (precio == null) return "";
 
-  const formateado = new Intl.NumberFormat("es-AR", {
-    style: "currency",
-    currency: "ARS",
+  // Formato argentino sin espacio entre el "$" y el número, punto como
+  // separador de miles: 23000 → "$23.000".
+  const numero = new Intl.NumberFormat("es-AR", {
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   }).format(precio);
+  const formateado = `$${numero}`;
 
   if (opciones?.unidad) return `${formateado} / ${opciones.unidad}`;
   return formateado;
@@ -43,8 +44,16 @@ export function formatFechaHora(iso: string): string {
 }
 
 export function formatFecha(iso: string): string {
+  // Formato numérico DD/MM/AAAA (sin nombre de mes), p. ej. 19/01/2026.
+  // Se toma la parte de fecha del ISO directamente para evitar el corrimiento
+  // de día por zona horaria (una fecha "date-only" se parsea como UTC y en
+  // Argentina caería un día antes).
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
+  if (m) return `${m[3]}/${m[2]}/${m[1]}`;
   return new Intl.DateTimeFormat("es-AR", {
-    dateStyle: "medium",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
   }).format(new Date(iso));
 }
 

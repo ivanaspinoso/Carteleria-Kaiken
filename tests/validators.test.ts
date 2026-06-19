@@ -119,7 +119,10 @@ describe("loginSchema", () => {
 
 describe("categoriaSchema", () => {
   it("acepta todos los tipos de categoría válidos", () => {
-    const tipos = ["helado", "cafeteria", "postre", "combo"] as const;
+    const tipos = [
+      "helado", "combo",
+      "helado-clasico", "helado-especial", "tamano", "postre", "cafeteria", "pasteleria",
+    ] as const;
     for (const tipo of tipos) {
       expect(categoriaSchema.safeParse({ nombre: "Test", tipo, orden: 0, activa: true }).success).toBe(true);
     }

@@ -27,20 +27,26 @@ export function usePantallaData(pantallaId: number, initial: DatosPantalla) {
       { data: categorias, error: e2 },
       { data: productos, error: e3 },
       { data: promos, error: e4 },
+      { data: placasFijas, error: e5 },
+      { data: placasPersonalizadas, error: e6 },
     ] = await Promise.all([
       supabase.from("pantallas").select("*").eq("id", pantallaId).single(),
       supabase.from("categorias").select("*").order("orden"),
       supabase.from("productos").select("*").order("nombre"),
       supabase.from("promos").select("*, producto:productos(id, nombre)").order("orden"),
+      supabase.from("placas_fijas").select("*").eq("pantalla_id", pantallaId).order("orden"),
+      supabase.from("placas_personalizadas").select("*").eq("pantalla_id", pantallaId).order("orden"),
     ]);
 
-    if (e1 || e2 || e3 || e4) return;
+    if (e1 || e2 || e3 || e4 || e5 || e6) return;
 
     const nuevos: DatosPantalla = {
       pantalla: { ...pantalla!, config: parsePantallaConfig(pantalla!.config) },
       categorias: categorias!,
       productos: productos!,
       promos: promos! as unknown as PromoConProducto[],
+      placas_fijas: placasFijas ?? [],
+      placas_personalizadas: placasPersonalizadas ?? [],
     };
     setDatos(nuevos);
     setOffline(false);
@@ -55,12 +61,18 @@ export function usePantallaData(pantallaId: number, initial: DatosPantalla) {
   }, [fetchDatos]);
 
   useEffect(() => {
+    // Fetch inicial al montar: corrige cualquier dato de SSR/estático que
+    // haya llegado viejo (ej. la página cacheada en prod desde el build).
+    fetchDatos();
+
     // Realtime: cualquier cambio en estas tablas dispara un refetch
     const channel = supabase
       .channel(`pantalla-${pantallaId}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "productos" }, debouncedFetch)
       .on("postgres_changes", { event: "*", schema: "public", table: "promos" }, debouncedFetch)
       .on("postgres_changes", { event: "*", schema: "public", table: "pantallas" }, debouncedFetch)
+      .on("postgres_changes", { event: "*", schema: "public", table: "placas_fijas" }, debouncedFetch)
+      .on("postgres_changes", { event: "*", schema: "public", table: "placas_personalizadas" }, debouncedFetch)
       .subscribe();
 
     // Heartbeat: actualiza ultima_conex para que el panel de Pantallas muestre online

@@ -1,11 +1,13 @@
 import type { Metadata, Viewport } from "next";
-import { Geist } from "next/font/google";
+import { Montserrat } from "next/font/google";
 import SwRegistration from "@/components/SwRegistration";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const montserrat = Montserrat({
+  variable: "--font-montserrat",
   subsets: ["latin"],
+  weight: ["300", "400", "500", "600", "700", "800"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -30,7 +32,7 @@ export const viewport: Viewport = {
   maximumScale: 1,
   userScalable: false,
   // TODO: reemplazar con color de marca real
-  themeColor: "#1a1a2e",
+  themeColor: "#5F3641",
 };
 
 export default function RootLayout({
@@ -41,7 +43,7 @@ export default function RootLayout({
   return (
     <html lang="es" suppressHydrationWarning>
       {/* suppressHydrationWarning: ignora atributos inyectados por extensiones del browser */}
-      <body className={`${geistSans.variable} antialiased`} suppressHydrationWarning>
+      <body className={`${montserrat.variable} antialiased`} suppressHydrationWarning>
         <SwRegistration />
         {children}
       </body>

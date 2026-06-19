@@ -2,17 +2,21 @@
 
 import { useOptimistic, useTransition, useState } from "react";
 import type { Categoria, Producto } from "@/lib/types";
-import { actualizarPrecio, toggleStock } from "@/lib/actions/productos";
+import { parseGustos } from "@/lib/types";
+import { actualizarPrecio, actualizarGustosIncluidos, toggleStock } from "@/lib/actions/productos";
 import FilaProducto from "./FilaProducto";
+import GustosEditor from "./GustosEditor";
 
 interface Props {
   categorias: Categoria[];
   productos:  Producto[];
+  /** Sabores clásicos para el multi-select de gustos del Kilo Kaikén. */
+  opcionesGustos?: string[];
 }
 
 type Actualizacion = { id: string; cambios: Partial<Producto> };
 
-export default function ListaProductos({ categorias, productos }: Props) {
+export default function ListaProductos({ categorias, productos, opcionesGustos = [] }: Props) {
   const [isPending, startTransition] = useTransition();
   const [errorGlobal, setErrorGlobal] = useState<string | null>(null);
 
@@ -31,6 +35,24 @@ export default function ListaProductos({ categorias, productos }: Props) {
     });
   }
 
+  function handlePrecioAlt(id: string, nuevoPrecio: number | null) {
+    startTransition(async () => {
+      setOptimistic({ id, cambios: { precio_alt: nuevoPrecio } });
+      setErrorGlobal(null);
+      const res = await actualizarPrecio(id, nuevoPrecio, "precio_alt");
+      if ("error" in res) setErrorGlobal(res.error);
+    });
+  }
+
+  function handleGustos(id: string, gustos: string[]) {
+    startTransition(async () => {
+      setOptimistic({ id, cambios: { gustos_incluidos: gustos } });
+      setErrorGlobal(null);
+      const res = await actualizarGustosIncluidos(id, gustos);
+      if ("error" in res) setErrorGlobal(res.error);
+    });
+  }
+
   function handleStock(id: string, enStock: boolean) {
     startTransition(async () => {
       setOptimistic({ id, cambios: { en_stock: enStock } });
@@ -41,9 +63,9 @@ export default function ListaProductos({ categorias, productos }: Props) {
   }
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       {errorGlobal && (
-        <div className="rounded-md bg-destructive/10 border border-destructive/20 px-3 py-2 text-destructive text-sm">
+        <div className="rounded-xl bg-destructive/10 border border-destructive/20 px-4 py-3 text-destructive text-sm">
           {errorGlobal}
         </div>
       )}
@@ -53,18 +75,40 @@ export default function ListaProductos({ categorias, productos }: Props) {
         if (prods.length === 0) return null;
         return (
           <section key={cat.id}>
-            <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-1.5 px-1">
-              {cat.nombre}
-            </h2>
-            <div className="rounded-xl border bg-card divide-y">
+            {/* Header de categoría con línea divisora */}
+            <div className="flex items-center gap-3 mb-2.5 px-1">
+              <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider whitespace-nowrap">
+                {cat.nombre}
+              </h2>
+              <div className="flex-1 h-px bg-border/60" />
+              <span className="text-xs text-muted-foreground/70 tabular-nums">{prods.length}</span>
+            </div>
+
+            {/* Card de productos */}
+            <div className="rounded-xl border bg-card overflow-hidden divide-y divide-border/60 shadow-sm">
               {prods.map(prod => (
-                <FilaProducto
-                  key={prod.id}
-                  producto={prod}
-                  onPrecio={handlePrecio}
-                  onStock={handleStock}
-                  disabled={isPending}
-                />
+                <div key={prod.id}>
+                  <FilaProducto
+                    producto={prod}
+                    onPrecio={handlePrecio}
+                    onPrecioAlt={handlePrecioAlt}
+                    onStock={handleStock}
+                    // Los postres tienen dos precios (Chico / Grande)
+                    mostrarPrecioAlt={cat.tipo === "postre"}
+                    disabled={isPending}
+                  />
+                  {/* Kilo Kaikén: editor de gustos incluidos (multi-select) */}
+                  {prod.nombre === "Kilo Kaikén" && (
+                    <div className="px-5 py-3 bg-muted/20 border-t">
+                      <GustosEditor
+                        seleccionados={parseGustos(prod.gustos_incluidos)}
+                        opciones={opcionesGustos}
+                        disabled={isPending}
+                        onGuardar={(g) => handleGustos(prod.id, g)}
+                      />
+                    </div>
+                  )}
+                </div>
               ))}
             </div>
           </section>
@@ -72,7 +116,7 @@ export default function ListaProductos({ categorias, productos }: Props) {
       })}
 
       {categorias.length === 0 && (
-        <div className="text-center text-muted-foreground py-12 text-sm">
+        <div className="text-center text-muted-foreground py-16 text-sm">
           No hay categorías activas
         </div>
       )}

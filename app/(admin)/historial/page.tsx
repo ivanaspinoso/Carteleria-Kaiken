@@ -1,36 +1,45 @@
 import type { Metadata } from "next";
-import { redirect } from "next/navigation";
-import { createClient, getCurrentRole } from "@/lib/supabase/server";
+import { createClient } from "@/lib/supabase/server";
 import { formatFechaHora } from "@/lib/format";
 
 export const metadata: Metadata = { title: "Historial" };
+// Siempre datos frescos (no cachear el historial).
+export const dynamic = "force-dynamic";
 
 const ACCION_LABEL: Record<string, string> = {
-  update_precio:    "Cambio de precio",
-  marcar_en_stock:  "Marcado en stock",
-  marcar_sin_stock: "Marcado sin stock",
-  update_promo:     "Edición de promo",
+  update_precio:     "Cambio de precio",
+  update_precio_alt: "Cambio de precio (Grande)",
+  update_gustos:     "Cambio de gustos",
+  marcar_en_stock:   "Marcado en stock",
+  marcar_sin_stock:  "Marcado sin stock",
+  update_promo:      "Edición de promo",
+  upsert_promo_kaiken: "Edición de promo",
 };
 
 export default async function HistorialPage() {
-  // Solo accesible para admin
-  const rol = await getCurrentRole();
-  if (rol !== "admin") redirect("/sabores");
-
   const supabase = await createClient();
-  const { data: logs } = await supabase
+  const { data: logs, error } = await supabase
     .from("logs")
     .select("*")
     .order("created_at", { ascending: false })
     .limit(100);
 
+  if (error) {
+    return (
+      <div className="space-y-4">
+        <h1 className="text-2xl font-bold">Historial</h1>
+        <div className="rounded-xl bg-destructive/10 border border-destructive/20 px-4 py-3 text-destructive text-sm">
+          No se pudo leer el historial: {error.message}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Historial</h1>
-        <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full font-medium">
-          Solo admin
-        </span>
+        <span className="text-xs text-muted-foreground">Últimos 100 cambios</span>
       </div>
 
       {(!logs || logs.length === 0) ? (

@@ -10,7 +10,7 @@ export default async function PostresPage() {
   const { data: categorias } = await supabase
     .from("categorias")
     .select("*")
-    .in("tipo", ["postre", "combo"])
+    .in("tipo", ["tamano", "postre"])
     .eq("activa", true)
     .order("orden");
 
@@ -22,13 +22,31 @@ export default async function PostresPage() {
     .in("categoria_id", catIds.length ? catIds : ["none"])
     .order("orden");
 
+  // Sabores clásicos disponibles para el multi-select de "gustos incluidos"
+  // del Kilo Kaikén (categorías de tipo helado-clasico).
+  const { data: catClasicas } = await supabase
+    .from("categorias")
+    .select("id")
+    .eq("tipo", "helado-clasico");
+  const clasicasIds = (catClasicas ?? []).map((c) => c.id);
+  const { data: saboresClasicos } = await supabase
+    .from("productos")
+    .select("nombre")
+    .in("categoria_id", clasicasIds.length ? clasicasIds : ["none"])
+    .order("nombre");
+  const opcionesGustos = (saboresClasicos ?? []).map((s) => s.nombre);
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Postres y Combos</h1>
+        <h1 className="text-2xl font-bold">Tamaños y Postres</h1>
         <span className="text-xs text-muted-foreground">{(productos ?? []).length} items</span>
       </div>
-      <ListaProductos categorias={categorias ?? []} productos={productos ?? []} />
+      <ListaProductos
+        categorias={categorias ?? []}
+        productos={productos ?? []}
+        opcionesGustos={opcionesGustos}
+      />
     </div>
   );
 }

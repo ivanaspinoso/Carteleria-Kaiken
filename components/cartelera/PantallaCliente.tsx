@@ -6,6 +6,9 @@ import PantallaSabores from "./PantallaSabores";
 import PantallaCafeteria from "./PantallaCafeteria";
 import PantallaPostres from "./PantallaPostres";
 import PantallaRotativa from "./PantallaRotativa";
+import PantallaSaboresClasicosEspeciales from "./horizontales/PantallaSaboresClasicosEspeciales";
+import PantallaTamanosPostres from "./horizontales/PantallaTamanosPostres";
+import PantallaCafeteriaPasteleria from "./horizontales/PantallaCafeteriaPasteleria";
 
 interface Props {
   pantallaId: number;
@@ -18,6 +21,16 @@ export default function PantallaCliente({ pantallaId, initial }: Props) {
 
   function renderTemplate() {
     switch (pantalla.template) {
+      // ===== Templates reales de Kaikén =====
+      case "rotativa":
+        return <PantallaRotativa datos={datos} />;
+      case "sabores-clasicos-especiales":
+        return <PantallaSaboresClasicosEspeciales datos={datos} />;
+      case "tamanos-postres":
+        return <PantallaTamanosPostres datos={datos} />;
+      case "cafeteria-pasteleria":
+        return <PantallaCafeteriaPasteleria datos={datos} />;
+      // ===== Templates viejos (compatibilidad) =====
       case "sabores_grande":
         return <PantallaSabores datos={datos} modo="grande" />;
       case "sabores_fijo":
@@ -26,8 +39,6 @@ export default function PantallaCliente({ pantallaId, initial }: Props) {
         return <PantallaCafeteria datos={datos} />;
       case "postres":
         return <PantallaPostres datos={datos} />;
-      case "rotativa":
-        return <PantallaRotativa datos={datos} />;
       default:
         return (
           <div className="w-full h-full flex items-center justify-center bg-black text-white">
@@ -38,7 +49,8 @@ export default function PantallaCliente({ pantallaId, initial }: Props) {
   }
 
   return (
-    <div className="w-full h-full relative">
+    <div className="marco-pantalla">
+      <div className="marco-pantalla__lienzo" data-orientacion={pantalla.orientacion}>
       {renderTemplate()}
 
       {/* Indicador offline */}
@@ -71,11 +83,15 @@ export default function PantallaCliente({ pantallaId, initial }: Props) {
           <p>Categorías: {datos.categorias.length}</p>
           <p>Productos: {datos.productos.length}</p>
           <p>Promos activas: {datos.promos.filter((p) => p.activa).length}</p>
+          <p>Placas fijas activas: {datos.placas_fijas.filter((p) => p.activa).length}/{datos.placas_fijas.length}</p>
+          <p>Placas propias activas: {datos.placas_personalizadas.filter((p) => p.activa).length}/{datos.placas_personalizadas.length}</p>
+          <p>Orientación: {pantalla.orientacion}{pantalla.orientacion === "vertical" ? ` (desfase ${pantalla.config.desfase_segundos ?? 0}s)` : ""}</p>
           <p style={{ marginTop: "0.5vw", color: "rgba(255,255,255,0.4)", fontSize: "0.75vw" }}>
             D×5 para cerrar
           </p>
         </div>
       )}
+      </div>
     </div>
   );
 }

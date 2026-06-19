@@ -7,7 +7,7 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans);
+  --font-sans: var(--font-montserrat);
   --font-mono: var(--font-geist-mono);
   --font-heading: var(--font-sans);
   --color-sidebar-ring: var(--sidebar-ring);
@@ -49,72 +49,74 @@
 }
 
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
+  /* Kaiken brand palette */
+  --background: #EFEDDC;
+  --foreground: #5F3641;
+  --card: #F5F3E8;
+  --card-foreground: #5F3641;
+  --popover: #F5F3E8;
+  --popover-foreground: #5F3641;
+  --primary: #D79074;
+  --primary-foreground: #EFEDDC;
+  --secondary: #C4B68F;
+  --secondary-foreground: #5F3641;
+  --muted: #E8E4D0;
+  --muted-foreground: #8C6570;
+  --accent: #C4B68F;
+  --accent-foreground: #5F3641;
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
+  --border: #D0C9A8;
+  --input: #D0C9A8;
+  --ring: #D79074;
+  --chart-1: #D79074;
+  --chart-2: #C4B68F;
+  --chart-3: #5F3641;
+  --chart-4: #EFEDDC;
+  --chart-5: #8C6570;
   --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --sidebar: #F5F3E8;
+  --sidebar-foreground: #5F3641;
+  --sidebar-primary: #D79074;
+  --sidebar-primary-foreground: #EFEDDC;
+  --sidebar-accent: #C4B68F;
+  --sidebar-accent-foreground: #5F3641;
+  --sidebar-border: #D0C9A8;
+  --sidebar-ring: #D79074;
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
+  /* Kaiken brand — dark variant */
+  --background: #2E1A1F;
+  --foreground: #EFEDDC;
+  --card: #3D2228;
+  --card-foreground: #EFEDDC;
+  --popover: #3D2228;
+  --popover-foreground: #EFEDDC;
+  --primary: #D79074;
+  --primary-foreground: #EFEDDC;
+  --secondary: #5C4A35;
+  --secondary-foreground: #EFEDDC;
+  --muted: #3D2228;
+  --muted-foreground: #C4B68F;
+  --accent: #5C4A35;
+  --accent-foreground: #EFEDDC;
   --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --border: #6B4A50;
+  --input: #6B4A50;
+  --ring: #D79074;
+  --chart-1: #D79074;
+  --chart-2: #C4B68F;
+  --chart-3: #EFEDDC;
+  --chart-4: #5C4A35;
+  --chart-5: #8C6570;
+  --sidebar: #3D2228;
+  --sidebar-foreground: #EFEDDC;
+  --sidebar-primary: #D79074;
+  --sidebar-primary-foreground: #EFEDDC;
+  --sidebar-accent: #5C4A35;
+  --sidebar-accent-foreground: #EFEDDC;
+  --sidebar-border: #6B4A50;
+  --sidebar-ring: #D79074;
 }
 
 @layer base {
@@ -124,7 +126,51 @@
   body {
     @apply bg-background text-foreground;
   }
-  html {
+  html,
+  body {
     @apply font-sans;
   }
+}
+
+/* ============================================================
+   Marco de cartelera — letterbox al aspect-ratio físico del TV
+   Horizontales 16:9, verticales 9:16. El lienzo se centra sobre
+   negro y escala manteniendo proporción (en TV real llena toda
+   la pantalla; en monitor de dev queda con bandas).
+   ============================================================ */
+.marco-pantalla {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #000;
+}
+.marco-pantalla__lienzo {
+  position: relative;
+  overflow: hidden;
+}
+.marco-pantalla__lienzo[data-orientacion="horizontal"] {
+  aspect-ratio: 16 / 9;
+  width: 100%;
+  height: auto;
+  max-height: 100%;
+}
+.marco-pantalla__lienzo[data-orientacion="vertical"] {
+  aspect-ratio: 9 / 16;
+  height: 100%;
+  width: auto;
+  max-width: 100%;
+}
+
+/* ============================================================
+   TituloConLineas — "─── SABORES CLÁSICOS ───"
+   Un solo trazo limpio a cada lado del texto (border-top que
+   crece con flex-grow). Sin guion separado.
+   Custom properties inline: --tl-grosor, --tl-color.
+   ============================================================ */
+.titulo-lineas__linea {
+  flex: 1;
+  height: 0;
+  border-top: var(--tl-grosor) solid var(--tl-color);
 }

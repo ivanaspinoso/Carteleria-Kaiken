@@ -124,7 +124,10 @@ async function handleAdminAuth(
 
 export const config = {
   matcher: [
-    // Excluir assets estáticos y rutas de Next.js internas
-    "/((?!_next/static|_next/image|favicon.ico|icon-|apple-touch-icon|sw\\.js|canvas/|manifest\\.webmanifest).*)",
+    // Excluir assets estáticos y rutas de Next.js internas.
+    // OJO: las carpetas públicas que usa la cartelera (placas/sabores/iconos)
+    // deben quedar excluidas, si no el middleware las 404ea (cartelera) o las
+    // manda a /login (admin/localhost).
+    "/((?!_next/static|_next/image|favicon.ico|icon-|apple-touch-icon|sw\\.js|canvas/|placas/|sabores/|iconos/|manifest\\.webmanifest|.*\\.(?:png|PNG|jpg|jpeg|svg|webp)$).*)",
   ],
 };

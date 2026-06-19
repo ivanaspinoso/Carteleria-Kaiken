@@ -1,0 +1,40 @@
+import { COLORS, fontPorLargo } from "@/lib/cartelera/tokens";
+import PlacaVideo, { OverlayTexto } from "./PlacaVideo";
+
+// Placa 2 — Promo Especial. Video + combo (recuadro verde) + fecha de validez
+// editable debajo de "VÁLIDO POR:".
+export default function PlacaPromoEspecial({
+  activo,
+  texto,
+  validez,
+}: {
+  activo?: boolean;
+  texto?: string;
+  validez?: string;
+}) {
+  return (
+    <PlacaVideo src="/placas/promo-especial.mp4" activo={activo}>
+      {/* Combo SOLO en la zona izquierda del recuadro verde: el cono de helado
+          entra por la derecha (~62%), así que el texto se ancla a la izquierda
+          y con ancho acotado para no taparlo nunca. */}
+      {texto ? (
+        <OverlayTexto
+          topPct={47.5}
+          fontPx={fontPorLargo(texto, 24, 20)}
+          weight={700}
+          color={COLORS.blancoSobreFondo}
+          style={{ left: "44%", width: "36%", lineHeight: 1.4, textAlign: "left" }}
+        >
+          {texto}
+        </OverlayTexto>
+      ) : null}
+      {/* Fecha de validez debajo de "VÁLIDO POR:" (horneado ~64%), a la
+          izquierda para no tocar el cono. */}
+      {validez ? (
+        <OverlayTexto topPct={70} fontPx={16} weight={400} color={COLORS.verde} style={{ left: "35%", width: "40%" }}>
+          {validez}
+        </OverlayTexto>
+      ) : null}
+    </PlacaVideo>
+  );
+}
