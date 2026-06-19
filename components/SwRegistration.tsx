@@ -7,8 +7,26 @@ export default function SwRegistration() {
     if (!("serviceWorker" in navigator)) return;
 
     if (process.env.NODE_ENV === "production") {
-      // Producción: PWA normal.
-      navigator.serviceWorker.register("/sw.js").catch(console.error);
+      // Producción: PWA con auto-actualización. Como las carteleras son TVs
+      // que nunca cierran la pestaña, hay que forzar que tomen la versión
+      // nueva tras cada deploy sin intervención manual.
+      let recargando = false;
+      navigator.serviceWorker.addEventListener("controllerchange", () => {
+        // Cuando el SW nuevo toma control, recargar una sola vez para cargar
+        // los assets nuevos (evita quedar pegado a una versión vieja).
+        if (recargando) return;
+        recargando = true;
+        window.location.reload();
+      });
+
+      navigator.serviceWorker
+        .register("/sw.js")
+        .then((reg) => {
+          // Buscar updates al cargar y cada 15 min (el TV está siempre prendido).
+          reg.update().catch(() => {});
+          setInterval(() => reg.update().catch(() => {}), 15 * 60 * 1000);
+        })
+        .catch(console.error);
       return;
     }
 
