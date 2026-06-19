@@ -71,7 +71,7 @@ export default function PantallaCliente({ pantallaId, initial }: Props) {
   }
 
   return (
-    <div className={rotar ? "rotador-90" : undefined}>
+    <div className={rotar ? "rotador-90" : undefined} style={rotar ? undefined : { display: "contents" }}>
     <div className="marco-pantalla">
       <div className="marco-pantalla__lienzo" data-orientacion={pantalla.orientacion}>
       {renderTemplate()}
