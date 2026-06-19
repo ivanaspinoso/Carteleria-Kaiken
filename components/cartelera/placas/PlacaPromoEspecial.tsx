@@ -1,4 +1,4 @@
-import { COLORS, fontPorLargo } from "@/lib/cartelera/tokens";
+import { COLORS, fontPorLargo, fontPorPalabras } from "@/lib/cartelera/tokens";
 import PlacaVideo, { OverlayTexto } from "./PlacaVideo";
 
 // Placa 2 — Promo Especial. Video + combo (recuadro verde) + fecha de validez
@@ -20,7 +20,7 @@ export default function PlacaPromoEspecial({
       {texto ? (
         <OverlayTexto
           topPct={47.5}
-          fontPx={fontPorLargo(texto, 24, 20)}
+          fontPx={fontPorPalabras(texto, 80, 70)}
           weight={700}
           color={COLORS.blancoSobreFondo}
           style={{ left: "44%", width: "36%", lineHeight: 1.4, textAlign: "left" }}
@@ -31,7 +31,7 @@ export default function PlacaPromoEspecial({
       {/* Fecha de validez debajo de "VÁLIDO POR:" (horneado ~64%), a la
           izquierda para no tocar el cono. */}
       {validez ? (
-        <OverlayTexto topPct={70} fontPx={16} weight={400} color={COLORS.verde} style={{ left: "35%", width: "40%" }}>
+        <OverlayTexto topPct={69} fontPx={40} weight={400} color={COLORS.verde} style={{ left: "32%", width: "40%" }}>
           {validez}
         </OverlayTexto>
       ) : null}

@@ -1,4 +1,4 @@
-import { COLORS, fontPorLargo } from "@/lib/cartelera/tokens";
+import { COLORS, fontPorLargo, fontPorPalabras } from "@/lib/cartelera/tokens";
 import PlacaVideo, { OverlayTexto } from "./PlacaVideo";
 
 // Placa 9 — Novedad del Mes. Video + novedad editable, centrada dentro del
@@ -11,7 +11,7 @@ export default function PlacaNovedadDelMes({ activo, novedad }: { activo?: boole
       {novedad ? (
         <OverlayTexto
           topPct={40}
-          fontPx={fontPorLargo(novedad, 20, 18)}
+          fontPx={fontPorPalabras(novedad, 60, 40)}
           weight={700}
           color={COLORS.violeta}
           style={{ left: "50%", width: "58%", whiteSpace: "nowrap" }}

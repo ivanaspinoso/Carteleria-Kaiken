@@ -11,7 +11,7 @@ export default function PlacaGustoDelDia({ activo, sabor }: { activo?: boolean; 
       {sabor ? (
         <OverlayTexto
           topPct={43.5}
-          fontPx={fontPorPalabras(sabor, 20, 13)}
+          fontPx={fontPorPalabras(sabor, 50, 40)}
           weight={700}
           color={COLORS.blancoSobreFondo}
           style={{ left: "50%", width: "54%", whiteSpace: "nowrap" }}
