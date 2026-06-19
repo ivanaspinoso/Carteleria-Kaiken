@@ -1,4 +1,4 @@
-const CACHE_VERSION = "v1";
+const CACHE_VERSION = "v2";
 const CACHE_STATIC = `kaiken-static-${CACHE_VERSION}`;
 const CACHE_PAGES = `kaiken-pages-${CACHE_VERSION}`;
 const ALL_CACHES = [CACHE_STATIC, CACHE_PAGES];
@@ -40,9 +40,13 @@ self.addEventListener("fetch", (event) => {
         (cached) =>
           cached ??
           fetch(request).then((res) => {
+            // Clonar YA (sincrónico), antes de devolver `res`: si se clona
+            // dentro del .then async, el body ya está en uso y falla.
+            const copia = res.clone();
             caches
               .open(CACHE_STATIC)
-              .then((c) => c.put(request, res.clone()));
+              .then((c) => c.put(request, copia))
+              .catch(() => {});
             return res;
           })
       )
