@@ -20,25 +20,41 @@ export default function PlacaVideo({
 }) {
   const ref = useRef<HTMLVideoElement>(null);
 
+  // Mantener TODOS los videos reproduciéndose siempre (muted), así ninguna
+  // animación se traba al aparecer y las dos pantallas verticales andan
+  // fluidas en simultáneo. Los videos son livianos (~0.5 MB c/u), el costo es
+  // bajo. El `play()` se reintenta por si el navegador bloquea el autoplay.
   useEffect(() => {
     const v = ref.current;
     if (!v) return;
-    let pauseTimer: ReturnType<typeof setTimeout> | undefined;
-    if (activo) {
-      try {
-        v.currentTime = 0;
-      } catch {
-        /* algunos browsers tiran si el metadata no cargó aún */
-      }
-      v.play().catch(() => {});
-    } else {
-      // Seguir reproduciendo durante el crossfade y recién ahí pausar
-      // (así no se reproducen los 13 videos a la vez en el TV).
-      pauseTimer = setTimeout(() => v.pause(), 1000);
-    }
-    return () => {
-      if (pauseTimer) clearTimeout(pauseTimer);
+
+    const intentarPlay = () => {
+      const p = v.play();
+      if (p && typeof p.catch === "function") p.catch(() => {});
     };
+
+    intentarPlay();
+    // Reintentos: algunos navegadores/TVs recién dejan reproducir cuando el
+    // video tiene datos suficientes o tras el primer gesto.
+    v.addEventListener("canplay", intentarPlay);
+    v.addEventListener("loadeddata", intentarPlay);
+    return () => {
+      v.removeEventListener("canplay", intentarPlay);
+      v.removeEventListener("loadeddata", intentarPlay);
+    };
+  }, []);
+
+  // Al volver a estar activa, reiniciar a 0 para ver la animación de entrada.
+  useEffect(() => {
+    const v = ref.current;
+    if (!v || !activo) return;
+    try {
+      v.currentTime = 0;
+    } catch {
+      /* el metadata podría no haber cargado todavía */
+    }
+    const p = v.play();
+    if (p && typeof p.catch === "function") p.catch(() => {});
   }, [activo]);
 
   return (
