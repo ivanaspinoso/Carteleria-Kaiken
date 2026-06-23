@@ -6,6 +6,9 @@ import { pxV } from "@/lib/cartelera/tokens";
 // useLayoutEffect avisa en SSR; usamos useEffect del lado servidor.
 const useIsoLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
+// Nombre corto del archivo para los logs (ej. "gusto-del-dia.mp4").
+const nombreSrc = (src: string) => src.split("/").pop() ?? src;
+
 /**
  * Placa basada en el video animado de Mora (1080×1920, ~10s).
  * Cuando la placa pasa a estar activa, reinicia el video a 0 para que la
@@ -23,10 +26,11 @@ export default function PlacaVideo({
 }) {
   const ref = useRef<HTMLVideoElement>(null);
 
-  // Mantener TODOS los videos reproduciéndose siempre (muted), así ninguna
-  // animación se traba al aparecer y las dos pantallas verticales andan
-  // fluidas en simultáneo. Los videos son livianos (~0.5 MB c/u), el costo es
-  // bajo. El `play()` se reintenta por si el navegador bloquea el autoplay.
+  // Reproducir SOLO la placa activa. Antes se reproducían las ~11 placas a la
+  // vez, pero los decoders por HARDWARE de las Smart TV soportan 1-2 streams
+  // H.264 simultáneos → las demás quedaban en negro (en la compu no se nota
+  // porque decodifica por software). Con play sólo en la activa + pausa + sin
+  // precarga en las inactivas, se usa un único decoder a la vez.
   useEffect(() => {
     const v = ref.current;
     if (!v) return;
@@ -35,45 +39,59 @@ export default function PlacaVideo({
     v.muted = true;
     v.setAttribute("muted", "");
 
+    // Logs de diagnóstico (visibles con depuración remota del TV).
+    const onEvt = (e: Event) => console.log(`[placa] ${nombreSrc(src)} → ${e.type}`);
+    const onError = () =>
+      console.error(`[placa] ${nombreSrc(src)} ERROR`, v.error?.code, v.error?.message);
+    const EVENTOS = ["loadeddata", "canplay", "playing", "stalled", "suspend", "waiting"];
+    EVENTOS.forEach((ev) => v.addEventListener(ev, onEvt));
+    v.addEventListener("error", onError);
+
+    let cancelado = false;
     const intentarPlay = () => {
+      if (cancelado) return;
       const p = v.play();
-      if (p && typeof p.catch === "function") p.catch(() => {});
+      // Antes el error se silenciaba; ahora lo logueamos para diagnosticar.
+      if (p && typeof p.catch === "function")
+        p.catch((err) =>
+          console.warn(`[placa] ${nombreSrc(src)} play() rechazado:`, err?.name, err?.message)
+        );
     };
 
-    intentarPlay();
-    // Reintentos: algunos navegadores/TVs recién dejan reproducir cuando el
-    // video tiene datos suficientes o tras el primer gesto.
-    v.addEventListener("canplay", intentarPlay);
-    v.addEventListener("loadeddata", intentarPlay);
+    if (activo) {
+      try {
+        v.currentTime = 0; // reiniciar para ver la animación de entrada
+      } catch {
+        /* el metadata podría no haber cargado todavía */
+      }
+      intentarPlay();
+      // Reintentos: el TV a veces recién deja reproducir con datos suficientes.
+      v.addEventListener("canplay", intentarPlay);
+      v.addEventListener("loadeddata", intentarPlay);
+    } else {
+      v.pause();
+    }
+
     return () => {
+      cancelado = true;
+      EVENTOS.forEach((ev) => v.removeEventListener(ev, onEvt));
+      v.removeEventListener("error", onError);
       v.removeEventListener("canplay", intentarPlay);
       v.removeEventListener("loadeddata", intentarPlay);
     };
-  }, []);
-
-  // Al volver a estar activa, reiniciar a 0 para ver la animación de entrada.
-  useEffect(() => {
-    const v = ref.current;
-    if (!v || !activo) return;
-    try {
-      v.currentTime = 0;
-    } catch {
-      /* el metadata podría no haber cargado todavía */
-    }
-    const p = v.play();
-    if (p && typeof p.catch === "function") p.catch(() => {});
-  }, [activo]);
+  }, [activo, src]);
 
   return (
     <div style={{ position: "relative", width: "100%", height: "100%", aspectRatio: "9 / 16", overflow: "hidden", backgroundColor: "#000" }}>
       <video
         ref={ref}
         src={src}
-        autoPlay
         muted
         loop
         playsInline
-        preload="auto"
+        // Solo la activa precarga/decodifica; las inactivas no reservan decoder.
+        // (Sin autoPlay: el play lo controla el effect SOLO en la activa.)
+        preload={activo ? "auto" : "none"}
         style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
       />
       {children}
