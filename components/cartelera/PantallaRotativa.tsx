@@ -1,12 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { DatosPantalla, PlacaFija, PlacaPersonalizada as TPlacaPersonalizada } from "@/lib/types";
 import { parsePlacaConfig, parseGustos } from "@/lib/types";
 import { formatPrecio, formatFecha } from "@/lib/format";
 import { calcularIndiceRotacion, dentroDeFechas } from "@/lib/cartelera/rotacion";
+import { esVideoUrl } from "@/lib/cartelera/validarImagen";
 import { COMPONENTES_PLACA, type PlacaProps } from "./placas";
-import PlacaPersonalizada from "./placas/PlacaPersonalizada";
+import { ModoOverlay } from "./placas/PlacaVideo";
+import VideoEngine, { type MediaTipo } from "./VideoEngine";
 
 interface Props {
   datos: DatosPantalla;
@@ -17,11 +19,15 @@ type Item =
   | { key: string; orden: number; duracion: number; kind: "pers"; data: TPlacaPersonalizada };
 
 /*
- * Rotación de las placas verticales (pantallas 1 y 5).
- * Mezcla placas_fijas + placas_personalizadas respetando `orden` global,
- * filtra por activa + ventana de fechas, y calcula la placa actual por
- * reloj + desfase (P1=0s, P5=30s) para que nunca coincidan.
- * Crossfade con opacity (400ms).
+ * Rotación de las placas verticales (pantallas 1 y 5) — arquitectura de signage:
+ *
+ *  - UN SOLO <video> persistente (VideoEngine): nunca se desmonta ni cambia de
+ *    key; solo cambia su src. Antes se montaban las ~11 placas a la vez y los
+ *    decoders por hardware de las Smart TV (1-2 streams) se saturaban → negro.
+ *  - Los OVERLAYS (texto editable) van en una capa HTML separada, encima del
+ *    video, manejada por estado → desacoplados del ciclo del <video>.
+ *  - El índice se calcula por reloj + desfase (P1=0s, P5=30s) para que las dos
+ *    pantallas nunca coincidan.
  */
 export default function PantallaRotativa({ datos }: Props) {
   const desfase = datos.pantalla.config.desfase_segundos ?? 0;
@@ -52,6 +58,19 @@ export default function PantallaRotativa({ datos }: Props) {
     return () => clearInterval(timer);
   }, [items, desfase]);
 
+  // Escala real del lienzo (--escala = anchoLienzo / 1080) para que los overlays
+  // sigan al video también cuando el contenido está rotado 90° (vw no sirve ahí).
+  const rootRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = rootRef.current;
+    if (!el) return;
+    const set = () => el.style.setProperty("--escala", String(el.clientWidth / 1080));
+    set();
+    const ro = new ResizeObserver(set);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
   // Contenido editable de las 3 placas (promo activa de cada tipo).
   const promoActiva = (tipo: string) => datos.promos.find((p) => p.tipo === tipo && p.activa) ?? null;
   const gusto = promoActiva("sabor_dia");
@@ -71,51 +90,58 @@ export default function PantallaRotativa({ datos }: Props) {
     return <div style={{ width: "100%", height: "100%", backgroundColor: "#000" }} />;
   }
 
+  // Item activo (índice acotado por si el set de placas cambió en un refetch).
+  const idx = ((indice % items.length) + items.length) % items.length;
+  const activo = items[idx];
+
+  // Medio (src + tipo) que recibe el VideoEngine persistente.
+  let src = "";
+  let tipo: MediaTipo = "video";
+  if (activo.kind === "fija") {
+    src = `/placas/${activo.data.slug}.mp4`;
+    tipo = "video";
+  } else {
+    src = activo.data.imagen_url;
+    tipo = esVideoUrl(src) ? "video" : "imagen";
+  }
+
+  // Overlay del activo (solo las placas fijas tienen texto editable encima).
+  let overlay: ReactNode = null;
+  if (activo.kind === "fija") {
+    const Placa = COMPONENTES_PLACA[activo.data.componente];
+    if (Placa) {
+      const cfg = parsePlacaConfig(activo.data.config);
+      const precioProp = cfg.precio != null ? { precio: formatPrecio(cfg.precio) } : {};
+      const precioAltProp = cfg.precio_alt != null ? { precioAlt: formatPrecio(cfg.precio_alt) } : {};
+      // Kilo Kaikén: precio y gustos salen del PRODUCTO (editable en /postres).
+      const kilo =
+        activo.data.slug === "kilo-kaiken"
+          ? (() => {
+              const prod = datos.productos.find((p) => p.nombre === "Kilo Kaikén");
+              return {
+                precio: formatPrecio(prod?.precio ?? null) || "$0000",
+                gustos: parseGustos(prod?.gustos_incluidos).join(" - "),
+              };
+            })()
+          : {};
+      overlay = (
+        <Placa {...(propsPorSlug[activo.data.slug] ?? {})} {...precioProp} {...precioAltProp} {...kilo} activo />
+      );
+    }
+  }
+
   return (
-    <div style={{ width: "100%", height: "100%", position: "relative", overflow: "hidden" }}>
-      {items.map((item, idx) => {
-        let contenido = null;
-        if (item.kind === "fija") {
-          const Placa = COMPONENTES_PLACA[item.data.componente];
-          if (Placa) {
-            // Precio(s) editable(s) guardado(s) en config (overlay sobre el video)
-            const cfg = parsePlacaConfig(item.data.config);
-            const precioProp = cfg.precio != null ? { precio: formatPrecio(cfg.precio) } : {};
-            const precioAltProp = cfg.precio_alt != null ? { precioAlt: formatPrecio(cfg.precio_alt) } : {};
-            // Kilo Kaikén: precio y gustos salen del PRODUCTO (no del config),
-            // así el dueño los edita en /postres (Kilos Especiales) y la lista
-            // de gustos en el multi-select.
-            const kilo =
-              item.data.slug === "kilo-kaiken"
-                ? (() => {
-                    const prod = datos.productos.find((p) => p.nombre === "Kilo Kaikén");
-                    return {
-                      precio: formatPrecio(prod?.precio ?? null) || "$0000",
-                      gustos: parseGustos(prod?.gustos_incluidos).join(" - "),
-                    };
-                  })()
-                : {};
-            contenido = <Placa {...(propsPorSlug[item.data.slug] ?? {})} {...precioProp} {...precioAltProp} {...kilo} activo={idx === indice} />;
-          }
-        } else {
-          contenido = <PlacaPersonalizada imagenUrl={item.data.imagen_url} nombre={item.data.nombre} activo={idx === indice} />;
-        }
-        if (!contenido) return null;
-        return (
-          <div
-            key={item.key}
-            style={{
-              position: "absolute",
-              inset: 0,
-              opacity: idx === indice ? 1 : 0,
-              // Fusión entre placas (crossfade), no un corte seco.
-              transition: "opacity 900ms ease-in-out",
-            }}
-          >
-            {contenido}
+    <div ref={rootRef} style={{ width: "100%", height: "100%", position: "relative", overflow: "hidden", backgroundColor: "#000" }}>
+      {/* UN solo motor de video persistente: solo cambia su src (sin remount). */}
+      <VideoEngine src={src} tipo={tipo} />
+      {/* Capa de overlay (texto editable) desacoplada del ciclo del video. */}
+      {overlay && (
+        <ModoOverlay.Provider value={true}>
+          <div key={activo.key} style={{ position: "absolute", inset: 0 }}>
+            {overlay}
           </div>
-        );
-      })}
+        </ModoOverlay.Provider>
+      )}
     </div>
   );
 }

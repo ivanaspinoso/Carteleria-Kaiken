@@ -1,4 +1,4 @@
-import { COLORS, pxV } from "@/lib/cartelera/tokens";
+import { COLORS, escalaV } from "@/lib/cartelera/tokens";
 import PlacaVideo, { OverlayTexto } from "./PlacaVideo";
 
 // Placa 5 — Cuartos. Video + dos precios editables:
@@ -28,8 +28,8 @@ export default function PlacaCuartos({
             style={{
               display: "inline-block",
               backgroundColor: COLORS.violeta,
-              padding: `${pxV(8)} ${pxV(10)}`,
-              borderRadius: pxV(40),
+              padding: `${escalaV(8)} ${escalaV(10)}`,
+              borderRadius: escalaV(40),
             }}
           >
             {precioAlt}

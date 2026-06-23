@@ -31,6 +31,17 @@ export function pxV(designPx: number): string {
   return `${(designPx / BASE_VERTICAL_WIDTH) * 100}vw`;
 }
 
+/**
+ * Escala un tamaño de diseño (base 1080) usando la variable CSS `--escala`
+ * (= anchoRealDelLienzo / 1080), que mide el contenedor por JS. A diferencia de
+ * `pxV` (que usa `vw` = ancho del VIEWPORT y se rompe cuando el contenido está
+ * rotado 90°), esto siempre escala respecto del lienzo real, rotado o no.
+ * Requiere que un ancestro defina `--escala`.
+ */
+export function escalaV(designPx: number): string {
+  return `calc(var(--escala, 1) * ${designPx}px)`;
+}
+
 export function pxH(designPx: number): string {
   // Para horizontales: escala según ancho del viewport horizontal (1920)
   return `${(designPx / BASE_HORIZONTAL_WIDTH) * 100}vw`;

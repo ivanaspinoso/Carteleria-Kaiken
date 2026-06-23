@@ -1,13 +1,29 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
-import { pxV } from "@/lib/cartelera/tokens";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+} from "react";
+import { pxV, escalaV } from "@/lib/cartelera/tokens";
 
 // useLayoutEffect avisa en SSR; usamos useEffect del lado servidor.
 const useIsoLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
 // Nombre corto del archivo para los logs (ej. "gusto-del-dia.mp4").
 const nombreSrc = (src: string) => src.split("/").pop() ?? src;
+
+/**
+ * Cuando es true, PlacaVideo NO renderiza su <video> (el video lo maneja el
+ * VideoEngine persistente) y solo renderiza los overlays (texto). Permite reusar
+ * las placas existentes como capa de overlay sin tocar sus archivos.
+ */
+export const ModoOverlay = createContext(false);
 
 /**
  * Placa basada en el video animado de Mora (1080×1920, ~10s).
@@ -25,6 +41,7 @@ export default function PlacaVideo({
   children?: ReactNode;
 }) {
   const ref = useRef<HTMLVideoElement>(null);
+  const soloOverlay = useContext(ModoOverlay);
 
   // Reproducir SOLO la placa activa. Antes se reproducían las ~11 placas a la
   // vez, pero los decoders por HARDWARE de las Smart TV soportan 1-2 streams
@@ -81,6 +98,15 @@ export default function PlacaVideo({
     };
   }, [activo, src]);
 
+  // Modo overlay: el video lo maneja el VideoEngine; acá solo el texto.
+  if (soloOverlay) {
+    return (
+      <div style={{ position: "absolute", inset: 0, overflow: "hidden" }}>
+        {children}
+      </div>
+    );
+  }
+
   return (
     <div style={{ position: "relative", width: "100%", height: "100%", aspectRatio: "9 / 16", overflow: "hidden", backgroundColor: "#000" }}>
       <video
@@ -128,7 +154,8 @@ export function OverlayTexto({
         width: "84%",
         textAlign: "center",
         fontFamily: "var(--font-montserrat), Montserrat, sans-serif",
-        fontSize: pxV(fontPx),
+        // escalaV (no pxV): el tamaño sigue al lienzo real, también rotado.
+        fontSize: escalaV(fontPx),
         fontWeight: weight,
         lineHeight: 1.1,
         color,
