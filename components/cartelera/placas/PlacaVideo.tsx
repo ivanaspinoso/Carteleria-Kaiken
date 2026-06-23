@@ -31,6 +31,10 @@ export default function PlacaVideo({
     const v = ref.current;
     if (!v) return;
 
+    // Asegurar muted en el DOM (algunos TV exigen el atributo, no solo el prop)
+    v.muted = true;
+    v.setAttribute("muted", "");
+
     const intentarPlay = () => {
       const p = v.play();
       if (p && typeof p.catch === "function") p.catch(() => {});
@@ -65,6 +69,7 @@ export default function PlacaVideo({
       <video
         ref={ref}
         src={src}
+        autoPlay
         muted
         loop
         playsInline

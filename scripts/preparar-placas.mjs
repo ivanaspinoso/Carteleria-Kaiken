@@ -53,7 +53,9 @@ for (const name of videos) {
     FFMPEG,
     [
       "-y", "-i", src,
-      "-c:v", "libx264", "-profile:v", "main", "-level", "4.0",
+      // Baseline = máxima compatibilidad con Smart TV viejos (sin CABAC ni
+      // B-frames). Level 4.0 alcanza para 1080×1920.
+      "-c:v", "libx264", "-profile:v", "baseline", "-level", "4.0",
       "-pix_fmt", "yuv420p", "-crf", "20", "-preset", "slow",
       "-an", "-movflags", "+faststart",
       tmp,
@@ -75,5 +77,5 @@ for (const name of videos) {
   ok++;
 }
 
-console.log(`\n✅ ${ok}/${videos.length} videos re-encodeados a H.264 Main / Level 4.0.`);
+console.log(`\n✅ ${ok}/${videos.length} videos re-encodeados a H.264 Baseline / Level 4.0.`);
 console.log("   Probá uno en el TV; si andan, commiteá y deployá.");
