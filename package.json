@@ -13,6 +13,8 @@
     "test:rls": "node scripts/test-rls.mjs",
     "generate:icons": "node scripts/generate-icons.mjs",
     "generate:placeholders": "node scripts/generate-placeholders.mjs",
+    "video:tv": "node scripts/preparar-video.mjs",
+    "placas:tv": "node scripts/preparar-placas.mjs",
     "test": "vitest run",
     "test:watch": "vitest"
   },
@@ -40,6 +42,7 @@
     "@vitest/coverage-v8": "^4.1.7",
     "eslint": "^9",
     "eslint-config-next": "15.5.18",
+    "ffmpeg-static": "^5.3.0",
     "playwright": "^1.61.0",
     "tailwindcss": "^4",
     "typescript": "^5",

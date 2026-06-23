@@ -40,7 +40,7 @@ ALTER PUBLICATION supabase_realtime ADD TABLE placas_personalizadas;
 -- =============================================================
 INSERT INTO storage.buckets (id, name, public)
 VALUES ('placas-personalizadas', 'placas-personalizadas', true)
-ON CONFLICT (id) DO NOTHING;
+ON CONFLICT (id) DO UPDATE SET public = true;
 
 CREATE POLICY "placas_pers_storage_select" ON storage.objects
   FOR SELECT USING (bucket_id = 'placas-personalizadas');

@@ -66,6 +66,39 @@ export default function PantallaCliente({ pantallaId, initial }: Props) {
     };
   }, []);
 
+  // Mantener la pantalla del TV ENCENDIDA mientras la cartelera está abierta
+  // (Screen Wake Lock API). El lock se libera si la pestaña se oculta, así que
+  // se vuelve a pedir al recuperar visibilidad (también tras el auto-reload 4am).
+  // Si el dispositivo no la soporta, cae al try/catch y manda la config de
+  // energía del propio TV (conviene igual desactivar el suspendido/protector).
+  useEffect(() => {
+    type WakeLock = { release: () => Promise<void> };
+    const nav = navigator as Navigator & {
+      wakeLock?: { request: (type: "screen") => Promise<WakeLock> };
+    };
+    let lock: WakeLock | null = null;
+
+    const pedir = async () => {
+      try {
+        if (nav.wakeLock && document.visibilityState === "visible") {
+          lock = await nav.wakeLock.request("screen");
+        }
+      } catch {
+        /* no soportado o bloqueado: queda a cargo de la config del TV */
+      }
+    };
+    const onVis = () => {
+      if (document.visibilityState === "visible") pedir();
+    };
+
+    pedir();
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      document.removeEventListener("visibilitychange", onVis);
+      lock?.release().catch(() => {});
+    };
+  }, []);
+
   function toggleFullscreen() {
     if (document.fullscreenElement) {
       document.exitFullscreen?.().catch(() => {});

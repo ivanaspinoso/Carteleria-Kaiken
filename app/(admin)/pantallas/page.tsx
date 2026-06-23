@@ -4,14 +4,6 @@ import { estaOnline, formatFechaHora } from "@/lib/format";
 
 export const metadata: Metadata = { title: "Pantallas" };
 
-const TEMPLATE_LABEL: Record<string, string> = {
-  rotativa:      "Rotativa",
-  sabores_grande:"Sabores 50\"",
-  sabores_fijo:  "Sabores 43\"",
-  cafeteria:     "Cafetería",
-  postres:       "Postres",
-};
-
 export default async function PantallasPage() {
   const supabase = await createClient();
   const { data: pantallas } = await supabase
@@ -48,8 +40,6 @@ export default async function PantallasPage() {
               <div className="flex-1 min-w-0">
                 <p className="font-semibold text-sm">{pantalla.nombre}</p>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  {pantalla.pulgadas}&rdquo; · {TEMPLATE_LABEL[pantalla.template] ?? pantalla.template}
-                  {" · "}
                   {isOnline
                     ? <span className="text-emerald-600 font-medium">Online</span>
                     : pantalla.ultima_conex
