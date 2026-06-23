@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export type MediaTipo = "video" | "imagen";
 
@@ -99,6 +99,27 @@ export default function VideoEngine({ src, tipo }: { src: string; tipo: MediaTip
     img.src = src;
   }, [src, tipo]);
 
+  // Diagnóstico EN PANTALLA (abrir con ?diag=1): muestra el estado real del
+  // <video> directo en el TV, sin necesitar consola. Como es HTML, se ve aunque
+  // el video (plano de hardware) no se renderice.
+  const [diag, setDiag] = useState<string | null>(null);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (new URLSearchParams(window.location.search).get("diag") !== "1") return;
+    const id = setInterval(() => {
+      const v = videoRef.current;
+      if (!v) return;
+      const e = v.error;
+      setDiag(
+        `src=${(v.currentSrc || "").split("/").pop() || "—"}\n` +
+          `ready=${v.readyState} net=${v.networkState} pause=${v.paused}\n` +
+          `vid=${v.videoWidth}x${v.videoHeight} t=${v.currentTime.toFixed(1)}\n` +
+          `err=${e ? `${e.code} ${e.message || ""}` : "none"}`
+      );
+    }, 500);
+    return () => clearInterval(id);
+  }, []);
+
   return (
     <div style={{ position: "absolute", inset: 0, backgroundColor: "#000", overflow: "hidden" }}>
       <video
@@ -110,6 +131,16 @@ export default function VideoEngine({ src, tipo }: { src: string; tipo: MediaTip
         preload="auto"
         style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
       />
+      {diag && (
+        <div style={{
+          position: "absolute", top: 10, left: 10, zIndex: 80,
+          background: "rgba(0,0,0,0.85)", color: "#4ade80",
+          font: "14px/1.5 monospace", padding: "8px 10px",
+          whiteSpace: "pre", pointerEvents: "none", borderRadius: 4,
+        }}>
+          {diag}
+        </div>
+      )}
       <canvas
         ref={canvasRef}
         style={{
