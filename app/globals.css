@@ -188,6 +188,11 @@
 .rotador-90 img {
   transform: translateZ(0);
 }
+/* Variante antihoraria: mismo layout (lo da .rotador-90) pero gira -90°.
+   Se define DESPUÉS para ganar a la regla transform de .rotador-90. */
+.rotador-90--ccw {
+  transform: translate(-50%, -50%) rotate(-90deg);
+}
 
 /* ============================================================
    TituloConLineas — "─── SABORES CLÁSICOS ───"

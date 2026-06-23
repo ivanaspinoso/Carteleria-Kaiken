@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Maximize, Minimize, RotateCw } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Maximize, Minimize } from "lucide-react";
 import type { DatosPantalla } from "@/lib/types";
 import { usePantallaData } from "@/hooks/usePantallaData";
 import PantallaSabores from "./PantallaSabores";
@@ -21,18 +21,49 @@ export default function PantallaCliente({ pantallaId, initial }: Props) {
   const { datos, offline, debug } = usePantallaData(pantallaId, initial);
   const { pantalla } = datos;
 
-  // Rotar el contenido por software 90° (para usar una pantalla vertical en un
-  // monitor/TV horizontal). Se puede activar con ?rotar=90 o con el botón.
-  const [rotar, setRotar] = useState(false);
+  // Rotar el contenido por software (para usar una pantalla vertical en un
+  // TV horizontal girado físicamente en la pared, cuando el TV Box no rota
+  // la salida HDMI). 0 = sin rotar, 90 = horario, -90 = antihorario.
+  // En pantallas verticales (P1/P5) se activa SOLA al cargar; el sentido se
+  // puede forzar/ajustar por URL con ?rotar=90 / ?rotar=-90 / ?rotar=0.
+  const [rotacion, setRotacion] = useState<0 | 90 | -90>(0);
   const [enFullscreen, setEnFullscreen] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    if (params.get("rotar") === "90") setRotar(true);
+    const r = params.get("rotar");
+    if (r === "90") setRotacion(90);
+    else if (r === "-90") setRotacion(-90);
+    else if (r === "0" || r === "no") setRotacion(0);
+    else if (initial.pantalla.orientacion === "vertical") setRotacion(90);
     const onFs = () => setEnFullscreen(Boolean(document.fullscreenElement));
     document.addEventListener("fullscreenchange", onFs);
     onFs();
     return () => document.removeEventListener("fullscreenchange", onFs);
+    // Solo al montar: la URL y la orientación inicial definen el estado base.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // El control (pantalla completa) se auto-oculta tras unos segundos sin
+  // actividad y reaparece con cualquier movimiento (mouse/touch/teclado), para
+  // no dejar el botón quemado sobre la cartelera.
+  const [controlesVisibles, setControlesVisibles] = useState(true);
+  const timerControles = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    const OCULTAR_MS = 4000;
+    const mostrar = () => {
+      setControlesVisibles(true);
+      if (timerControles.current) clearTimeout(timerControles.current);
+      timerControles.current = setTimeout(() => setControlesVisibles(false), OCULTAR_MS);
+    };
+    mostrar(); // arranca visible y programa el ocultado
+    const eventos = ["mousemove", "mousedown", "touchstart", "keydown"];
+    eventos.forEach((e) => window.addEventListener(e, mostrar, { passive: true }));
+    return () => {
+      eventos.forEach((e) => window.removeEventListener(e, mostrar));
+      if (timerControles.current) clearTimeout(timerControles.current);
+    };
   }, []);
 
   function toggleFullscreen() {
@@ -79,13 +110,14 @@ export default function PantallaCliente({ pantallaId, initial }: Props) {
 
   return (
     <>
-    {/* Controles SIEMPRE sobre el viewport real (fuera del rotador, no giran).
-        Rotar el contenido + entrar/salir de pantalla completa. */}
-    <div style={{ position: "fixed", bottom: 12, right: 12, zIndex: 200, display: "flex", gap: 8 }}>
-      <button type="button" onClick={() => setRotar((r) => !r)} aria-label="Rotar pantalla"
-        style={{ ...btnStyle, background: rotar ? "rgba(16,185,129,0.85)" : btnStyle.background }}>
-        <RotateCw size={20} />
-      </button>
+    {/* Control SIEMPRE sobre el viewport real (fuera del rotador, no gira).
+        Pantalla completa. Se auto-oculta sin actividad y vuelve con movimiento. */}
+    <div style={{
+      position: "fixed", bottom: 12, right: 12, zIndex: 200, display: "flex", gap: 8,
+      opacity: controlesVisibles ? 1 : 0,
+      pointerEvents: controlesVisibles ? "auto" : "none",
+      transition: "opacity 400ms ease",
+    }}>
       <button type="button" onClick={toggleFullscreen}
         aria-label={enFullscreen ? "Salir de pantalla completa" : "Pantalla completa"}
         style={btnStyle}>
@@ -93,7 +125,10 @@ export default function PantallaCliente({ pantallaId, initial }: Props) {
       </button>
     </div>
 
-    <div className={rotar ? "rotador-90" : undefined} style={rotar ? undefined : { display: "contents" }}>
+    <div
+      className={rotacion === 90 ? "rotador-90" : rotacion === -90 ? "rotador-90 rotador-90--ccw" : undefined}
+      style={rotacion === 0 ? { display: "contents" } : undefined}
+    >
     <div className="marco-pantalla">
       <div className="marco-pantalla__lienzo" data-orientacion={pantalla.orientacion}>
       {renderTemplate()}

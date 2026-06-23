@@ -13,6 +13,7 @@ import {
 } from "@/lib/actions/placas";
 import { actualizarPrecio, actualizarGustosIncluidos } from "@/lib/actions/productos";
 import { validarArchivoPlaca, esVideoUrl } from "@/lib/cartelera/validarImagen";
+import type { GrupoGustos } from "@/lib/cartelera/gustos";
 import GustosEditor from "./GustosEditor";
 
 // Placas fijas (video) con precio(s) editable(s) superpuesto(s). Cada placa
@@ -35,14 +36,14 @@ interface Props {
   personalizadas: PlacaPersonalizada[];
   /** Producto "Kilo Kaikén": su precio y gustos se superponen en esa placa. */
   kilo?: Producto | null;
-  /** Sabores clásicos para el multi-select de gustos del Kilo Kaikén. */
-  opcionesGustos?: string[];
+  /** Sabores clásicos (agrupados por categoría) para el multi-select del Kilo Kaikén. */
+  gruposGustos?: GrupoGustos[];
 }
 
 type Pantalla = 1 | 5;
 type Tab = "fijas" | "personalizadas";
 
-export default function PlacasAdmin({ fijas, personalizadas, kilo = null, opcionesGustos = [] }: Props) {
+export default function PlacasAdmin({ fijas, personalizadas, kilo = null, gruposGustos = [] }: Props) {
   const [tab, setTab] = useState<Tab>("fijas");
   const [pantalla, setPantalla] = useState<Pantalla>(1);
 
@@ -85,7 +86,7 @@ export default function PlacasAdmin({ fijas, personalizadas, kilo = null, opcion
       </div>
 
       {tab === "fijas" ? (
-        <FijasList fijas={fijasP} kilo={kilo} opcionesGustos={opcionesGustos} />
+        <FijasList fijas={fijasP} kilo={kilo} gruposGustos={gruposGustos} />
       ) : (
         <PersonalizadasTab pantalla={pantalla} placas={persP} />
       )}
@@ -95,7 +96,7 @@ export default function PlacasAdmin({ fijas, personalizadas, kilo = null, opcion
 
 // ── Tab 1: Placas fijas ───────────────────────────────────────────────────────
 
-function FijasList({ fijas, kilo, opcionesGustos }: { fijas: PlacaFija[]; kilo: Producto | null; opcionesGustos: string[] }) {
+function FijasList({ fijas, kilo, gruposGustos }: { fijas: PlacaFija[]; kilo: Producto | null; gruposGustos: GrupoGustos[] }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
@@ -174,7 +175,7 @@ function FijasList({ fijas, kilo, opcionesGustos }: { fijas: PlacaFija[]; kilo: 
               </div>
               <GustosEditor
                 seleccionados={parseGustos(kilo.gustos_incluidos)}
-                opciones={opcionesGustos}
+                grupos={gruposGustos}
                 disabled={isPending}
                 onGuardar={(g) => accion(() => actualizarGustosIncluidos(kilo.id, g))}
               />

@@ -17,19 +17,19 @@ export default function PlacaCuartos({
     <PlacaVideo src="/placas/cuartos.mp4" activo={activo}>
       {/* "A $X" debajo de CUARTOS (fondo rosa → violeta) — precio por unidad */}
       {precio ? (
-        <OverlayTexto topPct={30} fontPx={110} weight={400} color={COLORS.violeta}>
+        <OverlayTexto topPct={30} fontPx={62} weight={400} color={COLORS.violeta}>
           A {precio}
         </OverlayTexto>
       ) : null}
       {/* "$Y" en pastilla debajo de "Llevá 4 cuartos por" — precio x4 */}
       {precioAlt ? (
-        <OverlayTexto topPct={77} fontPx={84} weight={700} color={COLORS.blancoSobreFondo}>
+        <OverlayTexto topPct={78} fontPx={44} weight={700} color={COLORS.blancoSobreFondo}>
           <span
             style={{
               display: "inline-block",
               backgroundColor: COLORS.violeta,
-              padding: `${pxV(10)} ${pxV(40)}`,
-              borderRadius: pxV(60),
+              padding: `${pxV(8)} ${pxV(10)}`,
+              borderRadius: pxV(40),
             }}
           >
             {precioAlt}

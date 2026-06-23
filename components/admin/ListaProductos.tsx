@@ -3,6 +3,7 @@
 import { useOptimistic, useTransition, useState } from "react";
 import type { Categoria, Producto } from "@/lib/types";
 import { parseGustos } from "@/lib/types";
+import type { GrupoGustos } from "@/lib/cartelera/gustos";
 import { actualizarPrecio, actualizarGustosIncluidos, toggleStock } from "@/lib/actions/productos";
 import FilaProducto from "./FilaProducto";
 import GustosEditor from "./GustosEditor";
@@ -10,13 +11,13 @@ import GustosEditor from "./GustosEditor";
 interface Props {
   categorias: Categoria[];
   productos:  Producto[];
-  /** Sabores clásicos para el multi-select de gustos del Kilo Kaikén. */
-  opcionesGustos?: string[];
+  /** Sabores clásicos (agrupados por categoría) para el multi-select del Kilo Kaikén. */
+  gruposGustos?: GrupoGustos[];
 }
 
 type Actualizacion = { id: string; cambios: Partial<Producto> };
 
-export default function ListaProductos({ categorias, productos, opcionesGustos = [] }: Props) {
+export default function ListaProductos({ categorias, productos, gruposGustos = [] }: Props) {
   const [isPending, startTransition] = useTransition();
   const [errorGlobal, setErrorGlobal] = useState<string | null>(null);
 
@@ -102,7 +103,7 @@ export default function ListaProductos({ categorias, productos, opcionesGustos =
                     <div className="px-5 py-3 bg-muted/20 border-t">
                       <GustosEditor
                         seleccionados={parseGustos(prod.gustos_incluidos)}
-                        opciones={opcionesGustos}
+                        grupos={gruposGustos}
                         disabled={isPending}
                         onGuardar={(g) => handleGustos(prod.id, g)}
                       />

@@ -15,7 +15,7 @@ export default function DespuesColeBase({
     <PlacaVideo src={src} activo={activo}>
       {/* Precio editable debajo de "Valor especial" (mismo estilo que antojo) */}
       {precio ? (
-        <OverlayTexto topPct={86} fontPx={96} weight={400} color={COLORS.blancoSobreFondo}>
+        <OverlayTexto topPct={86} fontPx={46} weight={400} color={COLORS.blancoSobreFondo}>
           {precio}
         </OverlayTexto>
       ) : null}
