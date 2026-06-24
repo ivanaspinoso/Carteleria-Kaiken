@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import type { DatosPantalla, PlacaFija, PlacaPersonalizada as TPlacaPersonalizada } from "@/lib/types";
 import { parsePlacaConfig, parseGustos } from "@/lib/types";
 import { formatPrecio, formatFecha } from "@/lib/format";
@@ -12,6 +13,8 @@ import VideoEngine, { type MediaTipo } from "./VideoEngine";
 
 interface Props {
   datos: DatosPantalla;
+  // Contenedor full-screen (fuera del rotador) donde se portalea el <video>.
+  videoLayer?: HTMLElement | null;
 }
 
 type Item =
@@ -29,7 +32,7 @@ type Item =
  *  - El índice se calcula por reloj + desfase (P1=0s, P5=30s) para que las dos
  *    pantallas nunca coincidan.
  */
-export default function PantallaRotativa({ datos }: Props) {
+export default function PantallaRotativa({ datos, videoLayer }: Props) {
   const desfase = datos.pantalla.config.desfase_segundos ?? 0;
 
   const items = useMemo<Item[]>(() => {
@@ -132,10 +135,14 @@ export default function PantallaRotativa({ datos }: Props) {
     }
   }
 
+  // El <video> persistente se renderiza en la capa full-screen de atrás (portal),
+  // así llena la pantalla 16:9 sin recortarse contra el marco 9:16. Si no hay
+  // capa (SSR / horizontal), se renderiza inline como fallback.
+  const motor = <VideoEngine src={src} tipo={tipo} />;
+
   return (
-    <div ref={rootRef} style={{ width: "100%", height: "100%", position: "relative", overflow: "hidden", backgroundColor: "#000" }}>
-      {/* UN solo motor de video persistente: solo cambia su src (sin remount). */}
-      <VideoEngine src={src} tipo={tipo} />
+    <div ref={rootRef} style={{ width: "100%", height: "100%", position: "relative", overflow: "hidden" }}>
+      {videoLayer ? createPortal(motor, videoLayer) : motor}
       {/* Capa de overlay (texto editable) desacoplada del ciclo del video. */}
       {overlay && (
         <ModoOverlay.Provider value={true}>

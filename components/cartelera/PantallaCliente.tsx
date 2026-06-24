@@ -32,6 +32,12 @@ export default function PantallaCliente({ pantallaId, initial }: Props) {
   // Tamaño REAL del viewport en px. Para rotar el contenido a pantalla completa
   // usamos px explícitos (no 100vh/100vw): los navegadores de Smart TV (Tizen/
   // WebOS) calculan mal las unidades de viewport y el rotador quedaba sin efecto.
+  // Capa de video full-screen (fuera del rotador): el video horneado es 16:9 y
+  // tiene que llenar la PANTALLA completa sin recortarse contra el marco 9:16.
+  // PantallaRotativa renderiza el <video> acá vía portal; el texto/overlay queda
+  // dentro del rotador (rotado). Ambos en el mismo espacio de framebuffer.
+  const [videoLayer, setVideoLayer] = useState<HTMLDivElement | null>(null);
+
   const [vp, setVp] = useState({ w: 0, h: 0 });
   useEffect(() => {
     const set = () => setVp({ w: window.innerWidth, h: window.innerHeight });
@@ -126,7 +132,7 @@ export default function PantallaCliente({ pantallaId, initial }: Props) {
     switch (pantalla.template) {
       // ===== Templates reales de Kaikén =====
       case "rotativa":
-        return <PantallaRotativa datos={datos} />;
+        return <PantallaRotativa datos={datos} videoLayer={videoLayer} />;
       case "sabores-clasicos-especiales":
         return <PantallaSaboresClasicosEspeciales datos={datos} />;
       case "tamanos-postres":
@@ -215,11 +221,17 @@ export default function PantallaCliente({ pantallaId, initial }: Props) {
       </button>
     </div>
 
+    {/* Capa de video full-screen, DETRÁS del rotador (z-index 0). El <video>
+        horneado (16:9) llena la pantalla sin recortarse contra el marco 9:16. */}
+    <div ref={setVideoLayer} style={{ position: "fixed", inset: 0, zIndex: 0, background: "#000" }} />
+
     <div
       className={rotando ? "rotador-90" : undefined}
       style={rotadorStyle}
     >
-    <div className="marco-pantalla">
+    {/* Cuando rota (rotativa P1/P5) el fondo va transparente para ver el video
+        de la capa de atrás; el overlay (texto) se pinta encima. */}
+    <div className="marco-pantalla" style={rotando ? { background: "transparent" } : undefined}>
       <div className="marco-pantalla__lienzo" data-orientacion={pantalla.orientacion}>
       {renderTemplate()}
 
