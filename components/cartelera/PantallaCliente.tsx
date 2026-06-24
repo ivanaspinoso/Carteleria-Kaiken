@@ -161,8 +161,15 @@ export default function PantallaCliente({ pantallaId, initial }: Props) {
   // dimensiona ACOSTADO (ancho = alto del viewport) y se gira 90° desde 0,0,
   // trasladándolo para volver a entrar en cuadro.
   const rotando = rotacion !== 0 && vp.w > 0 && vp.h > 0;
+  const giro =
+    rotacion === 90
+      ? `translateX(${vp.w}px) rotate(90deg)`
+      : `translateY(${vp.h}px) rotate(-90deg)`;
   const rotadorStyle: React.CSSProperties = rotando
     ? {
+        // `fixed` con px reales: rota bien el HTML/texto en el TV (confirmado).
+        // El <video> NO sigue este transform (plano de hardware) → lo gira el
+        // VideoEngine con su propio transform.
         position: "fixed",
         top: 0,
         left: 0,
@@ -170,10 +177,9 @@ export default function PantallaCliente({ pantallaId, initial }: Props) {
         height: vp.w,
         overflow: "hidden",
         transformOrigin: "0 0",
-        transform:
-          rotacion === 90
-            ? `translateX(${vp.w}px) rotate(90deg)`
-            : `translateY(${vp.h}px) rotate(-90deg)`,
+        transform: giro,
+        WebkitTransform: giro,
+        WebkitTransformOrigin: "0 0",
       }
     : { display: "contents" };
 
@@ -192,6 +198,7 @@ export default function PantallaCliente({ pantallaId, initial }: Props) {
        `rotacion: ${rotacion}  rotando: ${rotando ? "SI" : "no"}\n` +
        `orientacion(DB): ${pantalla.orientacion}`}
     </div>
+
 
     {/* Control SIEMPRE sobre el viewport real (fuera del rotador, no gira).
         Pantalla completa. Se auto-oculta sin actividad y vuelve con movimiento. */}

@@ -170,16 +170,9 @@
    para llenar la pantalla horizontal.
    ============================================================ */
 .rotador-90 {
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  width: 100vh;
-  height: 100vw;
-  transform: translate(-50%, -50%) rotate(90deg);
-  transform-origin: center center;
+  /* El layout (position/tamaño/transform) lo define PantallaCliente inline en px
+     reales — más compatible con TVs que `100vh/100vw`. Acá solo el overflow. */
   overflow: hidden;
-  /* Forzar a que todo el subárbol se componga junto y rote con el contenedor. */
-  will-change: transform;
 }
 /* Los <video> a veces se pintan en una capa de overlay del hardware que NO
    respeta el rotate del ancestro (se ven sin rotar). translateZ(0) los fuerza

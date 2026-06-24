@@ -95,8 +95,8 @@ export default function PantallaRotativa({ datos }: Props) {
   const activo = items[idx];
 
   // Medio (src + tipo) que recibe el VideoEngine persistente. Los videos fijos
-  // se guardan VERTICALES 608×1080 (alto ≤1080, decodificable en el TV) → no
-  // necesitan rotación propia; el `.rotador-90` de la pantalla los orienta.
+  // se guardan ACOSTADOS 1920×1080 con la rotación HORNEADA (transpose=1), así
+  // el plano de video del TV los muestra ya girados, sin transform CSS.
   let src = "";
   let tipo: MediaTipo = "video";
   if (activo.kind === "fija") {

@@ -24,11 +24,12 @@ export default function VideoEngine({ src, tipo }: { src: string; tipo: MediaTip
   const srcRef = useRef<string | null>(null);
   const tipoRef = useRef<MediaTipo | null>(null);
 
-  // Los videos se guardan VERTICALES a 608×1080 (alto ≤1080, que el decoder de
-  // los Smart TV sí acepta). Al no estar acostados, el <video> NO necesita
-  // rotación CSS propia: cubre el contenedor y el `.rotador-90` de la pantalla
-  // lo orienta junto con el resto (igual que el texto del overlay), evitando que
-  // el plano de video por hardware del TV rote distinto y desincronice el texto.
+  // El `<video>` se pinta en un PLANO DE HARDWARE del Smart TV que IGNORA el
+  // transform del `.rotador-90` (ancestro): el texto rota pero el video no. Para
+  // que el video acompañe SIN depender de transforms (que el plano composita
+  // raro), la rotación va HORNEADA en el archivo: los videos se guardan ya
+  // girados 90° (ffmpeg transpose=1) a 1920×1080. Así el video llena la pantalla
+  // mostrando la placa "de costado", igual que el texto rotado por el rotador.
   const mediaStyle: CSSProperties = {
     position: "absolute",
     inset: 0,
