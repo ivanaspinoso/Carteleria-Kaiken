@@ -94,13 +94,11 @@ export default function PantallaRotativa({ datos }: Props) {
   const idx = ((indice % items.length) + items.length) % items.length;
   const activo = items[idx];
 
-  // Medio (src + tipo) que recibe el VideoEngine persistente.
-  // `rotar`: los 13 videos fijos se guardan ACOSTADOS (1920×1080, el TV no
-  // decodifica alto 1920) y el VideoEngine los gira 90°. Las personalizadas
-  // (sube el dueño) e imágenes se muestran tal cual.
+  // Medio (src + tipo) que recibe el VideoEngine persistente. Los videos fijos
+  // se guardan VERTICALES 608×1080 (alto ≤1080, decodificable en el TV) → no
+  // necesitan rotación propia; el `.rotador-90` de la pantalla los orienta.
   let src = "";
   let tipo: MediaTipo = "video";
-  const rotar = activo.kind === "fija";
   if (activo.kind === "fija") {
     src = `/placas/${activo.data.slug}.mp4`;
     tipo = "video";
@@ -137,7 +135,7 @@ export default function PantallaRotativa({ datos }: Props) {
   return (
     <div ref={rootRef} style={{ width: "100%", height: "100%", position: "relative", overflow: "hidden", backgroundColor: "#000" }}>
       {/* UN solo motor de video persistente: solo cambia su src (sin remount). */}
-      <VideoEngine src={src} tipo={tipo} rotar={rotar} />
+      <VideoEngine src={src} tipo={tipo} />
       {/* Capa de overlay (texto editable) desacoplada del ciclo del video. */}
       {overlay && (
         <ModoOverlay.Provider value={true}>

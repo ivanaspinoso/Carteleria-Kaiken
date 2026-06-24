@@ -18,62 +18,24 @@ export type MediaTipo = "video" | "imagen";
  * hueco; cuando el video nuevo dispara `canplay` se hace crossfade al vivo.
  * Las imágenes (placas personalizadas tipo imagen) se pintan en ese mismo canvas.
  */
-// Giro CSS que deshace el `transpose` con que se re-codificaron los videos.
-// Los decoders por hardware de los Smart TV no decodifican cuadros de alto
-// 1920 (límite ~1088px), pero sí 1920×1080 apaisado. Por eso los 13 videos se
-// guardan ACOSTADOS (transpose=2, 90° antihorario) y acá se los gira 90° horario
-// para que en la pantalla vertical se vean derechos, conservando los 1080p.
-const GRADOS_ROTACION = 90;
-
-export default function VideoEngine({
-  src,
-  tipo,
-  rotar = false,
-}: {
-  src: string;
-  tipo: MediaTipo;
-  rotar?: boolean;
-}) {
+export default function VideoEngine({ src, tipo }: { src: string; tipo: MediaTipo }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const srcRef = useRef<string | null>(null);
   const tipoRef = useRef<MediaTipo | null>(null);
-  const wrapRef = useRef<HTMLDivElement>(null);
 
-  // Tamaño real del contenedor (portrait): para rotar un video apaisado y que
-  // cubra la pantalla vertical, el <video> se dimensiona ACOSTADO (ancho = alto
-  // del contenedor, alto = ancho del contenedor) y recién ahí se gira 90°.
-  const [caja, setCaja] = useState({ w: 0, h: 0 });
-  useEffect(() => {
-    const el = wrapRef.current;
-    if (!el) return;
-    const set = () => setCaja({ w: el.clientWidth, h: el.clientHeight });
-    set();
-    const ro = new ResizeObserver(set);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
-
-  // Estilo común a <video> y <canvas>: sin rotar = cubrir el contenedor;
-  // rotado = caja acostada centrada + giro de 90°.
-  const mediaStyle: CSSProperties =
-    rotar && caja.w > 0
-      ? {
-          position: "absolute",
-          left: "50%",
-          top: "50%",
-          width: caja.h,
-          height: caja.w,
-          // Tailwind preflight aplica `video,canvas { max-width:100% }`, que
-          // recortaría el ancho acostado (caja.h) al ancho del contenedor y
-          // dejaría la caja CUADRADA → hay que anularlo para que ocupe la caja
-          // landscape completa antes de rotar.
-          maxWidth: "none",
-          maxHeight: "none",
-          transform: `translate(-50%, -50%) rotate(${GRADOS_ROTACION}deg)`,
-          objectFit: "cover",
-        }
-      : { position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" };
+  // Los videos se guardan VERTICALES a 608×1080 (alto ≤1080, que el decoder de
+  // los Smart TV sí acepta). Al no estar acostados, el <video> NO necesita
+  // rotación CSS propia: cubre el contenedor y el `.rotador-90` de la pantalla
+  // lo orienta junto con el resto (igual que el texto del overlay), evitando que
+  // el plano de video por hardware del TV rote distinto y desincronice el texto.
+  const mediaStyle: CSSProperties = {
+    position: "absolute",
+    inset: 0,
+    width: "100%",
+    height: "100%",
+    objectFit: "cover",
+  };
 
   useEffect(() => {
     const video = videoRef.current;
@@ -172,7 +134,7 @@ export default function VideoEngine({
   }, []);
 
   return (
-    <div ref={wrapRef} style={{ position: "absolute", inset: 0, backgroundColor: "#000", overflow: "hidden" }}>
+    <div style={{ position: "absolute", inset: 0, backgroundColor: "#000", overflow: "hidden" }}>
       <video
         ref={videoRef}
         autoPlay
