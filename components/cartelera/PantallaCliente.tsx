@@ -29,6 +29,21 @@ export default function PantallaCliente({ pantallaId, initial }: Props) {
   const [rotacion, setRotacion] = useState<0 | 90 | -90>(0);
   const [enFullscreen, setEnFullscreen] = useState(false);
 
+  // Tamaño REAL del viewport en px. Para rotar el contenido a pantalla completa
+  // usamos px explícitos (no 100vh/100vw): los navegadores de Smart TV (Tizen/
+  // WebOS) calculan mal las unidades de viewport y el rotador quedaba sin efecto.
+  const [vp, setVp] = useState({ w: 0, h: 0 });
+  useEffect(() => {
+    const set = () => setVp({ w: window.innerWidth, h: window.innerHeight });
+    set();
+    window.addEventListener("resize", set);
+    window.addEventListener("orientationchange", set);
+    return () => {
+      window.removeEventListener("resize", set);
+      window.removeEventListener("orientationchange", set);
+    };
+  }, []);
+
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const r = params.get("rotar");
@@ -141,6 +156,27 @@ export default function PantallaCliente({ pantallaId, initial }: Props) {
     borderRadius: 8, padding: 9, cursor: "pointer", display: "flex", lineHeight: 0,
   };
 
+  // Rotación a pantalla completa con px explícitos y origen en la esquina (más
+  // compatible con TVs que el `100vh/100vw` + centrado). El contenedor se
+  // dimensiona ACOSTADO (ancho = alto del viewport) y se gira 90° desde 0,0,
+  // trasladándolo para volver a entrar en cuadro.
+  const rotando = rotacion !== 0 && vp.w > 0 && vp.h > 0;
+  const rotadorStyle: React.CSSProperties = rotando
+    ? {
+        position: "fixed",
+        top: 0,
+        left: 0,
+        width: vp.h,
+        height: vp.w,
+        overflow: "hidden",
+        transformOrigin: "0 0",
+        transform:
+          rotacion === 90
+            ? `translateX(${vp.w}px) rotate(90deg)`
+            : `translateY(${vp.h}px) rotate(-90deg)`,
+      }
+    : { display: "contents" };
+
   return (
     <>
     {/* Control SIEMPRE sobre el viewport real (fuera del rotador, no gira).
@@ -159,8 +195,8 @@ export default function PantallaCliente({ pantallaId, initial }: Props) {
     </div>
 
     <div
-      className={rotacion === 90 ? "rotador-90" : rotacion === -90 ? "rotador-90 rotador-90--ccw" : undefined}
-      style={rotacion === 0 ? { display: "contents" } : undefined}
+      className={rotando ? "rotador-90" : undefined}
+      style={rotadorStyle}
     >
     <div className="marco-pantalla">
       <div className="marco-pantalla__lienzo" data-orientacion={pantalla.orientacion}>

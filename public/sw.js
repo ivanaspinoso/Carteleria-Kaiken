@@ -1,4 +1,4 @@
-const CACHE_VERSION = "v2";
+const CACHE_VERSION = "v3";
 const CACHE_STATIC = `kaiken-static-${CACHE_VERSION}`;
 const CACHE_PAGES = `kaiken-pages-${CACHE_VERSION}`;
 const ALL_CACHES = [CACHE_STATIC, CACHE_PAGES];
