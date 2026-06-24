@@ -179,6 +179,20 @@ export default function PantallaCliente({ pantallaId, initial }: Props) {
 
   return (
     <>
+    {/* DIAGNÓSTICO (temporal): cartelito SIEMPRE visible, FUERA del rotador (no
+        gira), para leer en el TV la orientación/tamaño real del viewport y el
+        estado de rotación. Así sabemos por qué no rota en el Samsung. */}
+    <div style={{
+      position: "fixed", top: 0, left: 0, zIndex: 9999,
+      background: "rgba(220,0,0,0.92)", color: "#fff",
+      font: "700 22px/1.35 monospace", padding: "8px 12px",
+      whiteSpace: "pre", pointerEvents: "none",
+    }}>
+      {`viewport: ${vp.w} x ${vp.h}\n` +
+       `rotacion: ${rotacion}  rotando: ${rotando ? "SI" : "no"}\n` +
+       `orientacion(DB): ${pantalla.orientacion}`}
+    </div>
+
     {/* Control SIEMPRE sobre el viewport real (fuera del rotador, no gira).
         Pantalla completa. Se auto-oculta sin actividad y vuelve con movimiento. */}
     <div style={{
