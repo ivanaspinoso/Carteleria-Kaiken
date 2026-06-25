@@ -24,7 +24,7 @@ export default function PlacaPromoEspecial({
           boxWidthPct={36}
           boxHeightPct={24}
           maxFontPx={64}
-          minFontPx={18}
+          minFontPx={40}
           weight={700}
           color={COLORS.blancoSobreFondo}
           wrap
