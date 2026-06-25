@@ -8,7 +8,7 @@ export default function PlacaAntojoDeTarde({ activo, precio }: { activo?: boolea
       {/* Precio editable desde el admin (placas_fijas.config.precio),
           posicionado justo debajo de "Valor especial". */}
       {precio ? (
-        <OverlayTexto topPct={86} fontPx={46} weight={400} color={COLORS.blancoSobreFondo}>
+        <OverlayTexto topPct={85} fontPx={74} weight={400} color={COLORS.blancoSobreFondo}>
           {precio}
         </OverlayTexto>
       ) : null}
