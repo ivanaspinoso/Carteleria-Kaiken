@@ -2,9 +2,9 @@
 
 import { useOptimistic, useTransition, useState } from "react";
 import type { Categoria, Producto } from "@/lib/types";
-import { parseGustos } from "@/lib/types";
+import { parseGustos, esKiloKaiken } from "@/lib/types";
 import type { GrupoGustos } from "@/lib/cartelera/gustos";
-import { actualizarPrecio, actualizarGustosIncluidos, toggleStock } from "@/lib/actions/productos";
+import { actualizarPrecio, actualizarGustosIncluidos, toggleStock, actualizarTextoProducto, type CampoTexto } from "@/lib/actions/productos";
 import FilaProducto from "./FilaProducto";
 import GustosEditor from "./GustosEditor";
 
@@ -54,6 +54,16 @@ export default function ListaProductos({ categorias, productos, gruposGustos = [
     });
   }
 
+  function handleTexto(id: string, campo: CampoTexto, valor: string) {
+    startTransition(async () => {
+      const limpio = valor.trim();
+      setOptimistic({ id, cambios: { [campo]: limpio === "" ? null : limpio } });
+      setErrorGlobal(null);
+      const res = await actualizarTextoProducto(id, campo, valor);
+      if ("error" in res) setErrorGlobal(res.error);
+    });
+  }
+
   function handleStock(id: string, enStock: boolean) {
     startTransition(async () => {
       setOptimistic({ id, cambios: { en_stock: enStock } });
@@ -94,12 +104,17 @@ export default function ListaProductos({ categorias, productos, gruposGustos = [
                     onPrecio={handlePrecio}
                     onPrecioAlt={handlePrecioAlt}
                     onStock={handleStock}
+                    onTexto={handleTexto}
                     // Los postres tienen dos precios (Chico / Grande)
                     mostrarPrecioAlt={cat.tipo === "postre"}
+                    // Descripción solo en especiales; volumen solo en cafetería
+                    // (son los únicos textos que se muestran en esas placas).
+                    mostrarDescripcion={cat.tipo === "helado-especial"}
+                    mostrarUnidad={cat.tipo === "cafeteria"}
                     disabled={isPending}
                   />
                   {/* Kilo Kaikén: editor de gustos incluidos (multi-select) */}
-                  {prod.nombre === "Kilo Kaikén" && (
+                  {esKiloKaiken(prod) && (
                     <div className="px-5 py-3 bg-muted/20 border-t">
                       <GustosEditor
                         seleccionados={parseGustos(prod.gustos_incluidos)}

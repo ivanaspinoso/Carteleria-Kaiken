@@ -17,6 +17,16 @@ export type PlacaFija = Tables<"placas_fijas">;
 export type PlacaPersonalizada = Tables<"placas_personalizadas">;
 export type PlacaPersonalizadaInsert = TablesInsert<"placas_personalizadas">;
 
+/**
+ * El producto "Kilo Kaikén" alimenta la placa vertical homónima (precio +
+ * gustos). Para que renombrarlo desde el admin NO rompa ese vínculo, lo
+ * identificamos por un `slug` estable; si todavía no tiene slug (base sin la
+ * migración 014), cae al nombre original. Así funciona antes y después.
+ */
+export function esKiloKaiken(p: { slug?: string | null; nombre?: string | null }): boolean {
+  return p.slug === "kilo-kaiken" || p.nombre === "Kilo Kaikén";
+}
+
 // Alias de enums
 export type TipoCategoria      = Enums<"tipo_categoria">;
 export type TipoPromo          = Enums<"tipo_promo">;

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import type { DatosPantalla, PlacaFija, PlacaPersonalizada as TPlacaPersonalizada } from "@/lib/types";
-import { parsePlacaConfig, parseGustos } from "@/lib/types";
+import { parsePlacaConfig, parseGustos, esKiloKaiken } from "@/lib/types";
 import { formatPrecio, formatFecha } from "@/lib/format";
 import { calcularIndiceRotacion, dentroDeFechas } from "@/lib/cartelera/rotacion";
 import { esVideoUrl } from "@/lib/cartelera/validarImagen";
@@ -113,7 +113,7 @@ export default function PantallaRotativa({ datos, videoLayer, rotacion = 0, vp }
     const kilo =
       item.data.slug === "kilo-kaiken"
         ? (() => {
-            const prod = datos.productos.find((p) => p.nombre === "Kilo Kaikén");
+            const prod = datos.productos.find(esKiloKaiken);
             return {
               precio: formatPrecio(prod?.precio ?? null) || "$0000",
               gustos: parseGustos(prod?.gustos_incluidos).join(" - "),

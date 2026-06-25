@@ -47,6 +47,7 @@ export type Database = {
           id: string;
           categoria_id: string;
           nombre: string;
+          slug: string | null;
           descripcion: string | null;
           precio: number | null;
           precio_alt: number | null;
@@ -63,6 +64,7 @@ export type Database = {
           id?: string;
           categoria_id: string;
           nombre: string;
+          slug?: string | null;
           descripcion?: string | null;
           precio?: number | null;
           precio_alt?: number | null;
@@ -79,6 +81,7 @@ export type Database = {
           id?: string;
           categoria_id?: string;
           nombre?: string;
+          slug?: string | null;
           descripcion?: string | null;
           precio?: number | null;
           precio_alt?: number | null;

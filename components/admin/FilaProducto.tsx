@@ -1,20 +1,28 @@
 "use client";
 
 import type { Producto } from "@/lib/types";
+import type { CampoTexto } from "@/lib/actions/productos";
 import PrecioInline from "./PrecioInline";
 import StockToggle from "./StockToggle";
+import TextoInline from "./TextoInline";
 
 interface Props {
   producto: Producto;
   onPrecio: (id: string, precio: number | null) => void;
   onPrecioAlt?: (id: string, precio: number | null) => void;
   onStock:  (id: string, enStock: boolean)       => void;
+  /** Editar nombre / descripción / unidad. */
+  onTexto: (id: string, campo: CampoTexto, valor: string) => void;
   /** Postres: muestra dos precios (Chico / Grande = precio / precio_alt). */
   mostrarPrecioAlt?: boolean;
+  /** Descripción editable — solo donde se muestra en placa (especiales). */
+  mostrarDescripcion?: boolean;
+  /** Unidad/volumen editable — solo donde se muestra en placa (cafetería). */
+  mostrarUnidad?: boolean;
   disabled: boolean;
 }
 
-export default function FilaProducto({ producto, onPrecio, onPrecioAlt, onStock, mostrarPrecioAlt, disabled }: Props) {
+export default function FilaProducto({ producto, onPrecio, onPrecioAlt, onStock, onTexto, mostrarPrecioAlt, mostrarDescripcion, mostrarUnidad, disabled }: Props) {
   return (
     <div className="flex items-center gap-4 px-5 py-3.5 hover:bg-muted/30 transition-colors">
 
@@ -24,19 +32,49 @@ export default function FilaProducto({ producto, onPrecio, onPrecioAlt, onStock,
         ${producto.en_stock ? "bg-emerald-500" : "bg-border"}
       `} />
 
-      {/* Nombre + unidad */}
+      {/* Nombre (editable) + descripción + unidad (editables) */}
       <div className="flex-1 min-w-0">
-        <p className={`
-          text-sm font-medium leading-snug truncate
-          ${!producto.en_stock ? "text-muted-foreground/60" : "text-foreground"}
-        `}>
-          {producto.nombre}
-          {producto.destacado && (
-            <span className="ml-1.5 text-xs text-primary">★</span>
-          )}
-        </p>
-        {producto.unidad && (
-          <p className="text-xs text-muted-foreground mt-0.5">por {producto.unidad}</p>
+        <div className="flex items-center gap-1">
+          <TextoInline
+            valor={producto.nombre}
+            onChange={(v) => onTexto(producto.id, "nombre", v)}
+            disabled={disabled}
+            variant="titulo"
+            maxLength={80}
+            ariaLabel="Nombre del producto"
+            tachado={!producto.en_stock}
+            requerido
+          />
+          {producto.destacado && <span className="text-xs text-primary flex-shrink-0">★</span>}
+        </div>
+        {/* Descripción (solo especiales) y unidad/volumen (solo cafetería):
+            se muestran únicamente donde el texto aparece en la placa. Vacías
+            muestran un hint tenue para agregarlas. */}
+        {(mostrarDescripcion || mostrarUnidad) && (
+          <div className="flex flex-wrap items-center gap-x-2 mt-0.5">
+            {mostrarDescripcion && (
+              <TextoInline
+                valor={producto.descripcion}
+                onChange={(v) => onTexto(producto.id, "descripcion", v)}
+                disabled={disabled}
+                variant="sub"
+                placeholder="＋ descripción"
+                maxLength={300}
+                ariaLabel="Descripción del producto"
+              />
+            )}
+            {mostrarUnidad && (
+              <TextoInline
+                valor={producto.unidad}
+                onChange={(v) => onTexto(producto.id, "unidad", v)}
+                disabled={disabled}
+                variant="sub"
+                placeholder="＋ volumen"
+                maxLength={30}
+                ariaLabel="Volumen del producto"
+              />
+            )}
+          </div>
         )}
       </div>
 

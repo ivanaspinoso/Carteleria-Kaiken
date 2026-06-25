@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { construirGruposGustos } from "@/lib/cartelera/gustos";
+import { esKiloKaiken } from "@/lib/types";
 import PlacasAdmin from "@/components/admin/PlacasAdmin";
 
 export const metadata: Metadata = { title: "Placas" };
@@ -8,11 +9,14 @@ export const metadata: Metadata = { title: "Placas" };
 export default async function PlacasPage() {
   const supabase = await createClient();
 
-  const [{ data: fijas }, { data: personalizadas }, { data: kilo }] = await Promise.all([
+  const [{ data: fijas }, { data: personalizadas }, { data: productosKilo }] = await Promise.all([
     supabase.from("placas_fijas").select("*").in("pantalla_id", [1, 5]).order("orden"),
     supabase.from("placas_personalizadas").select("*").in("pantalla_id", [1, 5]).order("orden"),
-    supabase.from("productos").select("*").eq("nombre", "Kilo Kaikén").maybeSingle(),
+    // El producto del Kilo Kaikén se identifica por slug estable (o nombre como
+    // fallback) en JS, así renombrarlo desde el admin no rompe el vínculo.
+    supabase.from("productos").select("*"),
   ]);
+  const kilo = (productosKilo ?? []).find(esKiloKaiken) ?? null;
 
   // Sabores clásicos para el multi-select de gustos del Kilo Kaikén,
   // agrupados por categoría (Cremas, Chocolate, Frutales, Dulce de Leche, Sin Azúcar).

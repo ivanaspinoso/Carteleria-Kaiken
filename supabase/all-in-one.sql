@@ -59,6 +59,7 @@ CREATE TABLE productos (
   id           uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
   categoria_id uuid        NOT NULL REFERENCES categorias(id) ON DELETE RESTRICT,
   nombre       text        NOT NULL,
+  slug         text,                   -- id estable opcional (ej. 'kilo-kaiken') para vincular placas sin depender del nombre editable
   descripcion  text,
   precio       numeric(10,2),          -- nullable: algunos items sin precio individual
   precio_alt   numeric(10,2),          -- precio alternativo (ej: Chico / Grande)
@@ -533,6 +534,10 @@ INSERT INTO productos (categoria_id, nombre, descripcion, precio, precio_alt, un
 -- Gustos incluidos del Kilo Kaikén: arrancan vacíos; el dueño los elige desde
 -- el admin (multi-select de sabores clásicos). No se hardcodean acá para evitar
 -- valores que no coincidan con los nombres reales de los productos.
+
+-- Slug estable del Kilo Kaikén: vincula la placa vertical aunque renombren el
+-- producto desde el admin (el código cae al nombre si falta el slug).
+UPDATE productos SET slug = 'kilo-kaiken' WHERE nombre = 'Kilo Kaikén';
 
 -- =============================================================
 -- PROMOS EDITABLES DE KAIKÉN (las 3 placas con recuadro editable)

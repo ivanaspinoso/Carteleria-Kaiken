@@ -11,6 +11,10 @@ function revalidarProductos() {
   revalidatePath("/sabores");
   revalidatePath("/cafeteria");
   revalidatePath("/postres");
+  // /promos y /placas leen productos en sus selectores (Gusto del Día, Novedad
+  // del Mes, gustos del Kilo) → revalidar para que muestren el nombre nuevo.
+  revalidatePath("/promos");
+  revalidatePath("/placas");
 }
 
 function validarPrecio(precio: number | null): string | null {
@@ -67,6 +71,51 @@ export async function actualizarPrecio(
   await insertarLog(supabase, user.id, `update_${campo}`, "productos", id,
     { [campo]: anterior?.[campo] ?? null },
     { [campo]: nuevoPrecio }
+  );
+
+  revalidarProductos();
+  return { ok: true };
+}
+
+// ── Textos editables del producto (nombre / descripción / unidad) ────────────
+const LIMITES_TEXTO = {
+  nombre: { max: 80, requerido: true, label: "nombre" },
+  descripcion: { max: 300, requerido: false, label: "descripción" },
+  unidad: { max: 30, requerido: false, label: "unidad" },
+} as const;
+
+export type CampoTexto = keyof typeof LIMITES_TEXTO;
+
+export async function actualizarTextoProducto(
+  id: string,
+  campo: CampoTexto,
+  valor: string
+): Promise<Resultado> {
+  const limite = LIMITES_TEXTO[campo];
+  const limpio = valor.trim();
+  if (limite.requerido && limpio === "") return { error: `El ${limite.label} no puede quedar vacío` };
+  if (limpio.length > limite.max) return { error: `El ${limite.label} supera los ${limite.max} caracteres` };
+  // Campos opcionales vacíos se guardan como null (el nombre es requerido).
+  const valorFinal: string | null = limpio === "" ? null : limpio;
+
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "No autenticado" };
+
+  // Leer valor anterior para el log
+  const { data: anterior } = await supabase
+    .from("productos")
+    .select("nombre, descripcion, unidad")
+    .eq("id", id)
+    .single();
+
+  const update = { [campo]: valorFinal } as TablesUpdate<"productos">;
+  const { error } = await supabase.from("productos").update(update).eq("id", id);
+  if (error) return { error: "Error al guardar el texto" };
+
+  await insertarLog(supabase, user.id, `update_${campo}`, "productos", id,
+    { [campo]: anterior?.[campo] ?? null },
+    { [campo]: valorFinal }
   );
 
   revalidarProductos();
