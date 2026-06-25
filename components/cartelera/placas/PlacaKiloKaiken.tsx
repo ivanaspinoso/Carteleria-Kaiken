@@ -1,5 +1,5 @@
 import { COLORS } from "@/lib/cartelera/tokens";
-import PlacaVideo, { OverlayTexto } from "./PlacaVideo";
+import PlacaVideo, { OverlayTexto, AutoFitTexto } from "./PlacaVideo";
 
 // Placa 7 — Kilo Kaikén. Video + precio ("a solo $X") y gustos seleccionados.
 export default function PlacaKiloKaiken({
@@ -20,11 +20,22 @@ export default function PlacaKiloKaiken({
         </OverlayTexto>
       ) : null}
       {/* Lista de gustos DENTRO del cartel verde, debajo del header horneado
-          "GUSTOS SELECCIONADOS". El cartel está centrado en ~58% horizontal. */}
+          "GUSTOS SELECCIONADOS". Auto-ajuste: pocos gustos se ven grandes y una
+          lista larga se achica/parte en líneas para no salirse del cartel. */}
       {gustos ? (
-        <OverlayTexto topPct={81.5} fontPx={30} weight={400} color={COLORS.blancoSobreFondo} style={{ left: "50%", width: "46%", lineHeight: 1.4 }}>
+        <AutoFitTexto
+          topPct={82}
+          boxWidthPct={46}
+          boxHeightPct={11}
+          maxFontPx={32}
+          minFontPx={13}
+          weight={400}
+          color={COLORS.blancoSobreFondo}
+          wrap
+          lineHeight={1.3}
+        >
           {gustos}
-        </OverlayTexto>
+        </AutoFitTexto>
       ) : null}
     </PlacaVideo>
   );

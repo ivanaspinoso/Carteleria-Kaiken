@@ -15,6 +15,10 @@ interface Props {
   datos: DatosPantalla;
   // Contenedor full-screen (fuera del rotador) donde se portalea el <video>.
   videoLayer?: HTMLElement | null;
+  // Rotación de la pantalla (0/90/-90) y tamaño real del viewport: se usan para
+  // rotar las placas PERSONALIZADAS verticales (las fijas vienen horneadas).
+  rotacion?: 0 | 90 | -90;
+  vp?: { w: number; h: number };
 }
 
 type Item =
@@ -32,7 +36,7 @@ type Item =
  *  - El índice se calcula por reloj + desfase (P1=0s, P5=30s) para que las dos
  *    pantallas nunca coincidan.
  */
-export default function PantallaRotativa({ datos, videoLayer }: Props) {
+export default function PantallaRotativa({ datos, videoLayer, rotacion = 0, vp }: Props) {
   const desfase = datos.pantalla.config.desfase_segundos ?? 0;
 
   const items = useMemo<Item[]>(() => {
@@ -166,6 +170,9 @@ export default function PantallaRotativa({ datos, videoLayer }: Props) {
   const src = srcDe(objetivo);
   const tipo: MediaTipo = objetivo.kind === "fija" || esVideoUrl(src) ? "video" : "imagen";
   const poster = posterDe(objetivo);
+  // Las placas fijas vienen con la rotación HORNEADA (rotar=0). Las
+  // personalizadas son verticales sin hornear → se rotan con la pantalla.
+  const rotarMedia: 0 | 90 | -90 = objetivo.kind === "pers" ? rotacion : 0;
 
   // Overlay del item MOSTRADO (no del objetivo): aparece recién cuando el video
   // nuevo está revelado (ver onReady), nunca sobre negro. Mientras carga la
@@ -179,7 +186,14 @@ export default function PantallaRotativa({ datos, videoLayer }: Props) {
   // capa (SSR / horizontal), se renderiza inline como fallback. Cuando el medio
   // objetivo se revela, avanzamos el índice mostrado → el texto entra en sync.
   const motor = (
-    <VideoEngine src={src} tipo={tipo} poster={poster} onReady={() => setIndiceMostrado(indice)} />
+    <VideoEngine
+      src={src}
+      tipo={tipo}
+      poster={poster}
+      rotar={rotarMedia}
+      vp={vp}
+      onReady={() => setIndiceMostrado(indice)}
+    />
   );
 
   return (

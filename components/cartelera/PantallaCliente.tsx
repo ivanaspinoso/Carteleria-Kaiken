@@ -132,7 +132,7 @@ export default function PantallaCliente({ pantallaId, initial }: Props) {
     switch (pantalla.template) {
       // ===== Templates reales de Kaikén =====
       case "rotativa":
-        return <PantallaRotativa datos={datos} videoLayer={videoLayer} />;
+        return <PantallaRotativa datos={datos} videoLayer={videoLayer} rotacion={rotacion} vp={vp} />;
       case "sabores-clasicos-especiales":
         return <PantallaSaboresClasicosEspeciales datos={datos} />;
       case "tamanos-postres":

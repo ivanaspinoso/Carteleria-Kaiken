@@ -32,6 +32,8 @@ export default function VideoEngine({
   src,
   tipo,
   poster,
+  rotar = 0,
+  vp,
   onReady,
 }: {
   src: string;
@@ -40,6 +42,16 @@ export default function VideoEngine({
   // <video> sin que aparezca negro. Si falta, se carga directo (puede haber un
   // parpadeo negro en ese caso — solo placas personalizadas sin póster).
   poster?: string;
+  // Rotación del MEDIO (no de la placa). Las placas fijas vienen con la rotación
+  // HORNEADA en el archivo (rotar=0). Las personalizadas que sube el dueño son
+  // verticales 9:16 sin hornear → se rotan acá 90° para que se vean derechas en
+  // la pantalla montada vertical, igual que las fijas. Es un transform ÚNICO
+  // sobre la capa de video (que está FUERA del rotador), no anidado → el plano
+  // de hardware del TV lo compone bien (a diferencia del intento anidado viejo).
+  rotar?: 0 | 90 | -90;
+  // Tamaño real del viewport (px), para rotar a pantalla completa sin vw/vh
+  // (los navegadores de Smart TV los calculan mal).
+  vp?: { w: number; h: number };
   // Se llama cuando el medio NUEVO ya está revelado (video pintando / imagen
   // cargada). PantallaRotativa lo usa para recién entonces mostrar el texto.
   onReady?: () => void;
@@ -59,6 +71,28 @@ export default function VideoEngine({
     height: "100%",
     objectFit: "cover",
   };
+
+  // Wrapper de rotación del medio. Replica EXACTO el `.rotador-90` de pantalla
+  // (px reales + origen 0,0 + traslación) para que el medio vertical llene la
+  // pantalla apaisada girado, idéntico a las placas fijas horneadas.
+  const rotando = rotar !== 0 && vp && vp.w > 0 && vp.h > 0;
+  const giro =
+    rotar === 90
+      ? `translateX(${vp?.w}px) rotate(90deg)`
+      : `translateY(${vp?.h}px) rotate(-90deg)`;
+  const rotadorStyle: CSSProperties = rotando
+    ? {
+        position: "absolute",
+        top: 0,
+        left: 0,
+        width: vp!.h,
+        height: vp!.w,
+        overflow: "hidden",
+        transformOrigin: "0 0",
+        transform: giro,
+        WebkitTransform: giro,
+      }
+    : { position: "absolute", inset: 0 };
 
   useEffect(() => {
     const video = videoRef.current;
@@ -172,9 +206,26 @@ export default function VideoEngine({
 
   return (
     <div style={{ position: "absolute", inset: 0, backgroundColor: "#000", overflow: "hidden" }}>
-      {/* Sin autoPlay: el play lo controla el effect (recién cuando el cover se
-          desvaneció) para que la animación de entrada arranque desde 0 y suave. */}
-      <video ref={videoRef} muted loop playsInline preload="auto" style={mediaStyle} />
+      {/* Wrapper que rota el medio (solo personalizadas verticales). Video +
+          cover van DENTRO, así giran juntos sin desfasarse. */}
+      <div style={rotadorStyle}>
+        {/* Sin autoPlay: el play lo controla el effect (recién cuando el cover se
+            desvaneció) para que la animación de entrada arranque desde 0 y suave. */}
+        <video ref={videoRef} muted loop playsInline preload="auto" style={mediaStyle} />
+        {/* Cover de contenido (póster / imagen). Renderiza SOBRE el plano de
+            video del TV, así tapa el hueco de carga con el frame, no negro. */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          ref={coverRef}
+          alt=""
+          style={{
+            ...mediaStyle,
+            opacity: 0,
+            transition: `opacity ${CROSSFADE_MS}ms ease-out`,
+            pointerEvents: "none",
+          }}
+        />
+      </div>
       {diag && (
         <div style={{
           position: "absolute", top: 10, left: 10, zIndex: 80,
@@ -185,19 +236,6 @@ export default function VideoEngine({
           {diag}
         </div>
       )}
-      {/* Cover de contenido (póster / imagen). Renderiza SOBRE el plano de video
-          del TV, así tapa el hueco de carga con el frame de la placa, no negro. */}
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        ref={coverRef}
-        alt=""
-        style={{
-          ...mediaStyle,
-          opacity: 0,
-          transition: `opacity ${CROSSFADE_MS}ms ease-out`,
-          pointerEvents: "none",
-        }}
-      />
     </div>
   );
 }

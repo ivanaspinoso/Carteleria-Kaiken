@@ -24,7 +24,7 @@ export default function PlacaPromoEspecial({
           boxWidthPct={36}
           boxHeightPct={24}
           maxFontPx={64}
-          minFontPx={40}
+          minFontPx={22}
           weight={700}
           color={COLORS.blancoSobreFondo}
           wrap
@@ -37,7 +37,7 @@ export default function PlacaPromoEspecial({
       {/* Fecha de validez debajo de "VÁLIDO POR:" (horneado ~64%), a la
           izquierda para no tocar el cono. */}
       {validez ? (
-        <OverlayTexto topPct={69} fontPx={40} weight={400} color={COLORS.verde} style={{ left: "32%", width: "40%" }}>
+        <OverlayTexto topPct={69} fontPx={40} weight={400} color={COLORS.verde} style={{ left: "34%", width: "40%" }}>
           {validez}
         </OverlayTexto>
       ) : null}
