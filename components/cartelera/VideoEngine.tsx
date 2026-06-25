@@ -102,20 +102,31 @@ export default function VideoEngine({
       const revelar = () => {
         if (listo || cancel) return;
         listo = true;
+        // Posicionar en el frame 0 (= el póster) y NO reproducir todavía: así el
+        // cover se desvanece sobre un cuadro idéntico (cruce invisible) y la
+        // animación de entrada arranca recién DESPUÉS, completa y desde 0. Antes
+        // el video corría durante la carga y al revelarse ya estaba a mitad de
+        // la animación → el resto de la placa aparecía "de golpe" (se veía bruto).
         try {
-          video.currentTime = 0; // arrancar en 0 = el frame del póster (cruce invisible)
+          video.pause();
+          video.currentTime = 0;
         } catch {
           /* el metadata podría no haber cargado todavía */
         }
-        const p = video.play();
-        if (p && typeof p.catch === "function") p.catch(() => {});
-        // Un par de frames para que el <video> ya pinte su cuadro y recién ahí
-        // desvanecer el cover (del póster estático al video vivo).
+        // Un par de frames para que el <video> pinte el frame 0 y recién ahí
+        // desvanecer el cover; al terminar el fundido, arrancar la reproducción.
         requestAnimationFrame(() =>
           requestAnimationFrame(() => {
             if (cancel) return;
             cover.style.opacity = "0";
             onReadyRef.current?.();
+            timers.push(
+              setTimeout(() => {
+                if (cancel) return;
+                const p = video.play();
+                if (p && typeof p.catch === "function") p.catch(() => {});
+              }, CROSSFADE_MS)
+            );
           })
         );
       };
@@ -161,7 +172,9 @@ export default function VideoEngine({
 
   return (
     <div style={{ position: "absolute", inset: 0, backgroundColor: "#000", overflow: "hidden" }}>
-      <video ref={videoRef} autoPlay muted loop playsInline preload="auto" style={mediaStyle} />
+      {/* Sin autoPlay: el play lo controla el effect (recién cuando el cover se
+          desvaneció) para que la animación de entrada arranque desde 0 y suave. */}
+      <video ref={videoRef} muted loop playsInline preload="auto" style={mediaStyle} />
       {diag && (
         <div style={{
           position: "absolute", top: 10, left: 10, zIndex: 80,
