@@ -18,11 +18,26 @@ export type MediaTipo = "video" | "imagen";
  * hueco; cuando el video nuevo dispara `canplay` se hace crossfade al vivo.
  * Las imágenes (placas personalizadas tipo imagen) se pintan en ese mismo canvas.
  */
-export default function VideoEngine({ src, tipo }: { src: string; tipo: MediaTipo }) {
+export default function VideoEngine({
+  src,
+  tipo,
+  onReady,
+}: {
+  src: string;
+  tipo: MediaTipo;
+  // Se llama cuando el medio NUEVO ya está revelado (el video tiene cuadro
+  // pintado / la imagen cargó). PantallaRotativa lo usa para recién entonces
+  // mostrar el texto editable, así nunca aparece sobre negro mientras carga.
+  onReady?: () => void;
+}) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const srcRef = useRef<string | null>(null);
   const tipoRef = useRef<MediaTipo | null>(null);
+
+  // Ref siempre fresca para no re-disparar el effect de carga al cambiar onReady.
+  const onReadyRef = useRef(onReady);
+  onReadyRef.current = onReady;
 
   // El `<video>` se pinta en un PLANO DE HARDWARE del Smart TV que IGNORA el
   // transform del `.rotador-90` (ancestro): el texto rota pero el video no. Para
@@ -88,6 +103,8 @@ export default function VideoEngine({ src, tipo }: { src: string; tipo: MediaTip
         requestAnimationFrame(() =>
           requestAnimationFrame(() => {
             canvas.style.opacity = "0";
+            // El video nuevo ya está pintando: avisar para sincronizar el texto.
+            onReadyRef.current?.();
           })
         );
       };
@@ -114,6 +131,7 @@ export default function VideoEngine({ src, tipo }: { src: string; tipo: MediaTip
       } catch {
         /* noop */
       }
+      onReadyRef.current?.(); // imagen pintada: sincronizar el texto
     };
     img.src = src;
   }, [src, tipo]);
