@@ -23,7 +23,7 @@ export default function PlacaCuartos({
       ) : null}
       {/* "$Y" en pastilla debajo de "Llevá 4 cuartos por" — precio x4 */}
       {precioAlt ? (
-        <OverlayTexto topPct={77} fontPx={88} weight={700} color={COLORS.blancoSobreFondo}>
+        <OverlayTexto topPct={78} fontPx={88} weight={700} color={COLORS.blancoSobreFondo}>
           <span
             style={{
               display: "inline-block",

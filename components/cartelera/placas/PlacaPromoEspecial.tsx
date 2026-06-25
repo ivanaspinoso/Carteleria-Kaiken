@@ -37,7 +37,7 @@ export default function PlacaPromoEspecial({
       {/* Fecha de validez debajo de "VÁLIDO POR:" (horneado ~64%), a la
           izquierda para no tocar el cono. */}
       {validez ? (
-        <OverlayTexto topPct={69} fontPx={40} weight={400} color={COLORS.verde} style={{ left: "33%", width: "40%" }}>
+        <OverlayTexto topPct={69} fontPx={40} weight={400} color={COLORS.verde} style={{ left: "32%", width: "40%" }}>
           {validez}
         </OverlayTexto>
       ) : null}
