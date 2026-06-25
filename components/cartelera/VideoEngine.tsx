@@ -183,7 +183,7 @@ export default function VideoEngine({
         style={{
           ...mediaStyle,
           opacity: 0,
-          transition: "opacity 900ms ease-in-out",
+          transition: "opacity 350ms ease-out",
           pointerEvents: "none",
         }}
       />
