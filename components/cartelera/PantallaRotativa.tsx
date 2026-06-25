@@ -199,9 +199,9 @@ export default function PantallaRotativa({ datos, videoLayer }: Props) {
 }
 
 /**
- * Envuelve el overlay de texto. Entra con un fade-in al montar (en sincronía
- * con el crossfade del video, ~350ms) y, cuando `visible` pasa a false (arrancó
- * la transición a la próxima placa), se va rápido (~200ms) para no quedar
+ * Envuelve el overlay de texto. Entra con un fade-in ágil al montar (en
+ * sincronía con el crossfade del video) y, cuando `visible` pasa a false
+ * (arrancó la transición a la próxima placa), se va rápido para no quedar
  * colgado sobre el negro de carga.
  */
 function OverlayFade({ visible, children }: { visible: boolean; children: ReactNode }) {
@@ -219,7 +219,7 @@ function OverlayFade({ visible, children }: { visible: boolean; children: ReactN
         position: "absolute",
         inset: 0,
         opacity: op,
-        transition: `opacity ${visible ? 350 : 200}ms ease-out`,
+        transition: `opacity ${visible ? 200 : 140}ms ease-out`,
       }}
     >
       {children}

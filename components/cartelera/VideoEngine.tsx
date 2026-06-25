@@ -4,6 +4,11 @@ import { useEffect, useRef, useState, type CSSProperties } from "react";
 
 export type MediaTipo = "video" | "imagen";
 
+// Duración del crossfade del cover (póster). Corto = transición ágil/dinámica.
+// El mismo valor se usa para esperar a que el cover tape antes de recargar el
+// <video> (así el negro de carga queda detrás del cover, nunca a la vista).
+const CROSSFADE_MS = 160;
+
 /**
  * Motor de medios para signage en Smart TV (Tizen / WebOS / Android WebView).
  *
@@ -124,7 +129,7 @@ export default function VideoEngine({
     // se pone negro al cargar) → el negro queda SIEMPRE detrás del cover. Sin
     // póster, cargar ya (caso degradado).
     if (poster && !primeraVez) {
-      timers.push(setTimeout(cargar, 300)); // ≈ duración del crossfade del cover
+      timers.push(setTimeout(cargar, CROSSFADE_MS)); // ≈ duración del crossfade del cover
     } else {
       cargar();
     }
@@ -176,7 +181,7 @@ export default function VideoEngine({
         style={{
           ...mediaStyle,
           opacity: 0,
-          transition: "opacity 300ms ease",
+          transition: `opacity ${CROSSFADE_MS}ms ease-out`,
           pointerEvents: "none",
         }}
       />
