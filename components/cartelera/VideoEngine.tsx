@@ -80,15 +80,20 @@ export default function VideoEngine({ src, tipo }: { src: string; tipo: MediaTip
         listo = true;
         const p = video.play();
         if (p && typeof p.catch === "function") p.catch(() => {});
-        // Esperar un frame para que el primer cuadro esté pintado y recién ahí
-        // desvanecer el cover (crossfade del freeze al video vivo).
-        requestAnimationFrame(() => {
-          canvas.style.opacity = "0";
-        });
+        // Esperar un par de frames para que el video nuevo ya esté pintando
+        // contenido (pasado su fundido de entrada) y recién ahí desvanecer el
+        // cover. El crossfade largo (ver `transition` del canvas) hace que el
+        // último frame de la placa saliente se solape con la entrante, tapando
+        // el negro de los fundidos horneados → transición fluida, sin parpadeo.
+        requestAnimationFrame(() =>
+          requestAnimationFrame(() => {
+            canvas.style.opacity = "0";
+          })
+        );
       };
       video.addEventListener("canplay", revelar, { once: true });
       video.addEventListener("loadeddata", revelar, { once: true });
-      const fallback = setTimeout(revelar, 2000); // por si no llegan eventos
+      const fallback = setTimeout(revelar, 1200); // por si no llegan eventos
 
       return () => {
         clearTimeout(fallback);
@@ -160,7 +165,7 @@ export default function VideoEngine({ src, tipo }: { src: string; tipo: MediaTip
         style={{
           ...mediaStyle,
           opacity: 0,
-          transition: "opacity 350ms ease",
+          transition: "opacity 900ms ease-in-out",
           pointerEvents: "none",
         }}
       />
