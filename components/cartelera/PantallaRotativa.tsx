@@ -126,7 +126,9 @@ export default function PantallaRotativa({ datos, videoLayer }: Props) {
   const srcDe = (item: Item) =>
     item.kind === "fija" ? `/placas/${item.data.slug}.mp4` : item.data.imagen_url;
   const posterDe = (item: Item) =>
-    item.kind === "fija" ? `/placas/posters/${item.data.slug}.jpg` : undefined;
+    item.kind === "fija"
+      ? `/placas/posters/${item.data.slug}.jpg`
+      : item.data.poster_url ?? undefined;
 
   // Índices acotados (por si el set de placas cambió en un refetch). El OBJETIVO
   // (reloj) define qué medio carga el VideoEngine; el MOSTRADO define el texto.

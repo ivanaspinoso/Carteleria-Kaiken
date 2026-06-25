@@ -86,6 +86,71 @@ export function leerDimensionesVideo(file: File): Promise<{ width: number; heigh
   });
 }
 
+/**
+ * Genera el PÓSTER (primer frame) de un video en el navegador: dibuja el cuadro
+ * inicial en un canvas y devuelve un JPEG. La cartelera lo usa para tapar el
+ * hueco de carga del <video> sin que aparezca negro en el Smart TV (el canvas
+ * SÍ funciona acá, en el admin: decodifica por software). Devuelve null si no
+ * se pudo (no rompe la subida; la placa simplemente cae al modo sin póster).
+ */
+export function generarPosterVideo(file: File): Promise<Blob | null> {
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(file);
+    const v = document.createElement("video");
+    v.preload = "auto";
+    v.muted = true;
+    v.playsInline = true;
+    let listo = false;
+
+    const limpiar = () => URL.revokeObjectURL(url);
+    const fallar = () => {
+      if (listo) return;
+      listo = true;
+      limpiar();
+      resolve(null);
+    };
+
+    const capturar = () => {
+      if (listo) return;
+      try {
+        const canvas = document.createElement("canvas");
+        canvas.width = v.videoWidth;
+        canvas.height = v.videoHeight;
+        const ctx = canvas.getContext("2d");
+        if (!ctx || !canvas.width || !canvas.height) return fallar();
+        ctx.drawImage(v, 0, 0, canvas.width, canvas.height);
+        listo = true;
+        canvas.toBlob(
+          (blob) => {
+            limpiar();
+            resolve(blob);
+          },
+          "image/jpeg",
+          0.85
+        );
+      } catch {
+        fallar();
+      }
+    };
+
+    // Buscar el primer cuadro real (seek a 0) y capturarlo.
+    v.onloadeddata = () => {
+      if (v.readyState >= 2) {
+        try {
+          v.currentTime = 0;
+        } catch {
+          capturar();
+        }
+      }
+    };
+    v.onseeked = capturar;
+    v.onerror = fallar;
+    // Red de seguridad por si no llegan los eventos.
+    setTimeout(fallar, 5000);
+    v.src = url;
+  });
+}
+
 /** Lee dimensiones de un File en el browser (URL.createObjectURL + Image). */
 export function leerDimensiones(file: File): Promise<{ width: number; height: number }> {
   return new Promise((resolve, reject) => {

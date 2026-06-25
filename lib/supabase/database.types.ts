@@ -272,6 +272,8 @@ export type Database = {
           pantalla_id: number;
           imagen_url: string;
           imagen_path: string;
+          poster_url: string | null;
+          poster_path: string | null;
           nombre: string;
           orden: number;
           duracion: number;
@@ -286,6 +288,8 @@ export type Database = {
           pantalla_id: number;
           imagen_url: string;
           imagen_path: string;
+          poster_url?: string | null;
+          poster_path?: string | null;
           nombre: string;
           orden?: number;
           duracion?: number;
@@ -300,6 +304,8 @@ export type Database = {
           pantalla_id?: number;
           imagen_url?: string;
           imagen_path?: string;
+          poster_url?: string | null;
+          poster_path?: string | null;
           nombre?: string;
           orden?: number;
           duracion?: number;

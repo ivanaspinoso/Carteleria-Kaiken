@@ -12,7 +12,7 @@ import {
   borrarPlacaPersonalizada,
 } from "@/lib/actions/placas";
 import { actualizarPrecio, actualizarGustosIncluidos } from "@/lib/actions/productos";
-import { validarArchivoPlaca, esVideoUrl } from "@/lib/cartelera/validarImagen";
+import { validarArchivoPlaca, esVideoUrl, generarPosterVideo, FORMATOS_VIDEO } from "@/lib/cartelera/validarImagen";
 import type { GrupoGustos } from "@/lib/cartelera/gustos";
 import GustosEditor from "./GustosEditor";
 
@@ -320,6 +320,10 @@ function UploadForm({ pantalla }: { pantalla: Pantalla }) {
     setError(null);
     const destinos: Pantalla[] = destino === "ambas" ? [1, 5] : [destino];
     startTransition(async () => {
+      // Si es video, generamos el póster (primer frame) en el navegador una sola
+      // vez y lo subimos junto al video → la cartelera tapa el hueco de carga
+      // sin negro en el TV. Si no se pudo, sigue sin póster.
+      const poster = FORMATOS_VIDEO.includes(file.type) ? await generarPosterVideo(file) : null;
       for (const d of destinos) {
         const fd = new FormData();
         fd.set("file", file);
@@ -328,6 +332,7 @@ function UploadForm({ pantalla }: { pantalla: Pantalla }) {
         fd.set("duracion", String(duracion));
         if (inicio) fd.set("inicio", inicio);
         if (fin) fd.set("fin", fin);
+        if (poster) fd.set("poster", poster, "poster.jpg");
         const res = await crearPlacaPersonalizada(fd);
         if ("error" in res) {
           setError(`Pantalla ${d}: ${res.error}`);

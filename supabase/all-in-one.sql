@@ -330,6 +330,8 @@ CREATE TABLE placas_personalizadas (
   pantalla_id   int NOT NULL REFERENCES pantallas(id) ON DELETE CASCADE,
   imagen_url    text NOT NULL,
   imagen_path   text NOT NULL,
+  poster_url    text,            -- primer frame (video): tapa el hueco de carga sin negro
+  poster_path   text,
   nombre        text NOT NULL,
   orden         int NOT NULL DEFAULT 0,
   duracion      int NOT NULL DEFAULT 10,

@@ -72,8 +72,9 @@ export async function crearPlacaPersonalizada(formData: FormData): Promise<Resul
   ]);
   const orden = Math.max(maxFija?.orden ?? 0, maxPers?.orden ?? 0) + 1;
 
+  const base = `${pantallaId}/${crypto.randomUUID()}`;
   const ext = (file.name.split(".").pop() || "png").toLowerCase();
-  const path = `${pantallaId}/${crypto.randomUUID()}.${ext}`;
+  const path = `${base}.${ext}`;
 
   const { error: upErr } = await supabase.storage.from(BUCKET).upload(path, file, {
     contentType: file.type,
@@ -83,10 +84,31 @@ export async function crearPlacaPersonalizada(formData: FormData): Promise<Resul
 
   const { data: pub } = supabase.storage.from(BUCKET).getPublicUrl(path);
 
+  // Póster: el admin genera el primer frame de los VIDEOS en el navegador y lo
+  // manda como `poster` (JPEG). Lo subimos junto al video para que la cartelera
+  // tape el hueco de carga sin negro en el TV. Si falla, seguimos sin póster
+  // (la placa cae al modo directo, sin romper la subida).
+  let posterUrl: string | null = null;
+  let posterPath: string | null = null;
+  const poster = formData.get("poster");
+  if (esVideo && poster instanceof File && poster.size > 0) {
+    const pPath = `${base}.poster.jpg`;
+    const { error: pErr } = await supabase.storage.from(BUCKET).upload(pPath, poster, {
+      contentType: "image/jpeg",
+      upsert: false,
+    });
+    if (!pErr) {
+      posterPath = pPath;
+      posterUrl = supabase.storage.from(BUCKET).getPublicUrl(pPath).data.publicUrl;
+    }
+  }
+
   const { error: insErr } = await supabase.from("placas_personalizadas").insert({
     pantalla_id: pantallaId,
     imagen_url: pub.publicUrl,
     imagen_path: path,
+    poster_url: posterUrl,
+    poster_path: posterPath,
     nombre,
     orden,
     duracion: Number.isFinite(duracion) && duracion > 0 ? duracion : 10,
@@ -96,8 +118,9 @@ export async function crearPlacaPersonalizada(formData: FormData): Promise<Resul
   });
 
   if (insErr) {
-    // Rollback del archivo si falló la fila
-    await supabase.storage.from(BUCKET).remove([path]).then(() => {}, () => {});
+    // Rollback de los archivos si falló la fila
+    const aBorrar = posterPath ? [path, posterPath] : [path];
+    await supabase.storage.from(BUCKET).remove(aBorrar).then(() => {}, () => {});
     return { error: "Error al guardar la placa" };
   }
 
@@ -113,13 +136,15 @@ export async function borrarPlacaPersonalizada(id: string): Promise<Resultado> {
 
   const { data: fila } = await supabase
     .from("placas_personalizadas")
-    .select("imagen_path")
+    .select("imagen_path, poster_path")
     .eq("id", id)
     .maybeSingle();
 
-  // Borrar el archivo primero; si falla, log pero igual borramos la fila.
-  if (fila?.imagen_path) {
-    const { error: stErr } = await supabase.storage.from(BUCKET).remove([fila.imagen_path]);
+  // Borrar los archivos primero (video/imagen + póster); si falla, log pero
+  // igual borramos la fila.
+  const paths = [fila?.imagen_path, fila?.poster_path].filter(Boolean) as string[];
+  if (paths.length > 0) {
+    const { error: stErr } = await supabase.storage.from(BUCKET).remove(paths);
     if (stErr) console.error("No se pudo borrar el archivo de Storage:", stErr.message);
   }
 
