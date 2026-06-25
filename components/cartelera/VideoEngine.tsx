@@ -13,38 +13,40 @@ export type MediaTipo = "video" | "imagen";
  *  - El playback dependía del render de React (montar/desmontar, autoplay).
  *
  * Acá hay UN SOLO <video> PERSISTENTE: nunca se desmonta ni cambia de key; solo
- * se cambia su `.src` de forma controlada. Para no mostrar negro durante la
- * carga del nuevo src, un <canvas> congela el último frame visible y tapa el
- * hueco; cuando el video nuevo dispara `canplay` se hace crossfade al vivo.
- * Las imágenes (placas personalizadas tipo imagen) se pintan en ese mismo canvas.
+ * se cambia su `.src`. PROBLEMA: al recargar el src, el plano de video por
+ * HARDWARE del TV se pone NEGRO mientras decodifica, y NO se puede congelar el
+ * último frame en un <canvas> (el plano de hardware no es accesible por canvas:
+ * sale negro). SOLUCIÓN: un <img> "cover" con el PÓSTER (primer frame de la
+ * placa, una imagen estática que SÍ renderiza sobre el plano de video del TV)
+ * tapa el hueco de carga con el CONTENIDO de la placa — nunca negro. Como el
+ * póster es el frame 0 del video, cuando el <video> revela y arranca en 0 el
+ * cruce es invisible. El cover hace crossfade desde la placa anterior y, al
+ * revelarse el video nuevo, se desvanece hacia el vivo.
  */
 export default function VideoEngine({
   src,
   tipo,
+  poster,
   onReady,
 }: {
   src: string;
   tipo: MediaTipo;
-  // Se llama cuando el medio NUEVO ya está revelado (el video tiene cuadro
-  // pintado / la imagen cargó). PantallaRotativa lo usa para recién entonces
-  // mostrar el texto editable, así nunca aparece sobre negro mientras carga.
+  // Primer frame del medio (imagen estática) para tapar el hueco de carga del
+  // <video> sin que aparezca negro. Si falta, se carga directo (puede haber un
+  // parpadeo negro en ese caso — solo placas personalizadas sin póster).
+  poster?: string;
+  // Se llama cuando el medio NUEVO ya está revelado (video pintando / imagen
+  // cargada). PantallaRotativa lo usa para recién entonces mostrar el texto.
   onReady?: () => void;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const coverRef = useRef<HTMLImageElement>(null);
   const srcRef = useRef<string | null>(null);
-  const tipoRef = useRef<MediaTipo | null>(null);
 
   // Ref siempre fresca para no re-disparar el effect de carga al cambiar onReady.
   const onReadyRef = useRef(onReady);
   onReadyRef.current = onReady;
 
-  // El `<video>` se pinta en un PLANO DE HARDWARE del Smart TV que IGNORA el
-  // transform del `.rotador-90` (ancestro): el texto rota pero el video no. Para
-  // que el video acompañe SIN depender de transforms (que el plano composita
-  // raro), la rotación va HORNEADA en el archivo: los videos se guardan ya
-  // girados 90° (ffmpeg transpose=1) a 1920×1080. Así el video llena la pantalla
-  // mostrando la placa "de costado", igual que el texto rotado por el rotador.
   const mediaStyle: CSSProperties = {
     position: "absolute",
     inset: 0,
@@ -55,35 +57,37 @@ export default function VideoEngine({
 
   useEffect(() => {
     const video = videoRef.current;
-    const canvas = canvasRef.current;
-    if (!video || !canvas || !src) return;
+    const cover = coverRef.current;
+    if (!video || !cover || !src) return;
     if (src === srcRef.current) return; // sin cambios
-
-    const ctx = canvas.getContext("2d");
-    const prevTipo = tipoRef.current;
+    const primeraVez = srcRef.current === null;
     srcRef.current = src;
-    tipoRef.current = tipo;
 
-    // Congela el frame actual del video en el canvas (cover de carga).
-    const congelarVideo = () => {
+    // Imagen (placa personalizada tipo imagen): pintar en el cover y pausar el
+    // video (libera el decoder mientras se ve una imagen).
+    if (tipo === "imagen") {
+      cover.src = src;
+      cover.style.opacity = "1";
       try {
-        if (video.videoWidth && video.readyState >= 2) {
-          canvas.width = video.videoWidth;
-          canvas.height = video.videoHeight;
-          ctx?.drawImage(video, 0, 0, canvas.width, canvas.height);
-          canvas.style.opacity = "1";
-        }
+        video.pause();
       } catch {
-        /* video cross-origin: el canvas queda "tainted" pero igual se muestra */
+        /* noop */
       }
-    };
+      onReadyRef.current?.();
+      return;
+    }
 
-    if (tipo === "video") {
-      // Tapar el hueco de carga: si veníamos de video, congelamos su último
-      // frame; si veníamos de imagen, el canvas ya la está mostrando (opacity 1).
-      // Así el <video> recarga su src DETRÁS del cover y nunca se ve negro.
-      if (prevTipo === "video") congelarVideo();
+    // Video: tapar con el PÓSTER (contenido, nunca negro). En una transición el
+    // cover hace crossfade desde la placa anterior (video vivo debajo); en el
+    // arranque aparece directo.
+    if (poster) cover.src = poster;
+    cover.style.opacity = poster ? "1" : "0";
 
+    let cancel = false;
+    const timers: ReturnType<typeof setTimeout>[] = [];
+
+    const cargar = () => {
+      if (cancel) return;
       video.muted = true;
       video.setAttribute("muted", "");
       video.src = src;
@@ -91,54 +95,47 @@ export default function VideoEngine({
 
       let listo = false;
       const revelar = () => {
-        if (listo) return;
+        if (listo || cancel) return;
         listo = true;
+        try {
+          video.currentTime = 0; // arrancar en 0 = el frame del póster (cruce invisible)
+        } catch {
+          /* el metadata podría no haber cargado todavía */
+        }
         const p = video.play();
         if (p && typeof p.catch === "function") p.catch(() => {});
-        // Esperar un par de frames para que el video nuevo ya esté pintando
-        // contenido (pasado su fundido de entrada) y recién ahí desvanecer el
-        // cover. El crossfade largo (ver `transition` del canvas) hace que el
-        // último frame de la placa saliente se solape con la entrante, tapando
-        // el negro de los fundidos horneados → transición fluida, sin parpadeo.
+        // Un par de frames para que el <video> ya pinte su cuadro y recién ahí
+        // desvanecer el cover (del póster estático al video vivo).
         requestAnimationFrame(() =>
           requestAnimationFrame(() => {
-            canvas.style.opacity = "0";
-            // El video nuevo ya está pintando: avisar para sincronizar el texto.
+            if (cancel) return;
+            cover.style.opacity = "0";
             onReadyRef.current?.();
           })
         );
       };
       video.addEventListener("canplay", revelar, { once: true });
       video.addEventListener("loadeddata", revelar, { once: true });
-      const fallback = setTimeout(revelar, 1200); // por si no llegan eventos
+      timers.push(setTimeout(revelar, 1500)); // por si no llegan eventos
+    };
 
-      return () => {
-        clearTimeout(fallback);
-        video.removeEventListener("canplay", revelar);
-        video.removeEventListener("loadeddata", revelar);
-      };
+    // Con póster y NO en el arranque: dejar que el cover (póster nuevo) TERMINE
+    // de cruzar sobre la placa anterior antes de recargar el <video> (cuyo plano
+    // se pone negro al cargar) → el negro queda SIEMPRE detrás del cover. Sin
+    // póster, cargar ya (caso degradado).
+    if (poster && !primeraVez) {
+      timers.push(setTimeout(cargar, 300)); // ≈ duración del crossfade del cover
+    } else {
+      cargar();
     }
 
-    // tipo === "imagen": pintar en el canvas y fundir hacia ella sobre el video.
-    const img = new Image();
-    img.onload = () => {
-      canvas.width = img.naturalWidth || 1080;
-      canvas.height = img.naturalHeight || 1920;
-      ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
-      canvas.style.opacity = "1";
-      try {
-        video.pause(); // liberar el decoder mientras se ve una imagen
-      } catch {
-        /* noop */
-      }
-      onReadyRef.current?.(); // imagen pintada: sincronizar el texto
+    return () => {
+      cancel = true;
+      timers.forEach(clearTimeout);
     };
-    img.src = src;
-  }, [src, tipo]);
+  }, [src, tipo, poster]);
 
-  // Diagnóstico EN PANTALLA (abrir con ?diag=1): muestra el estado real del
-  // <video> directo en el TV, sin necesitar consola. Como es HTML, se ve aunque
-  // el video (plano de hardware) no se renderice.
+  // Diagnóstico EN PANTALLA (abrir con ?diag=1): estado real del <video>.
   const [diag, setDiag] = useState<string | null>(null);
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -159,15 +156,7 @@ export default function VideoEngine({
 
   return (
     <div style={{ position: "absolute", inset: 0, backgroundColor: "#000", overflow: "hidden" }}>
-      <video
-        ref={videoRef}
-        autoPlay
-        muted
-        loop
-        playsInline
-        preload="auto"
-        style={mediaStyle}
-      />
+      <video ref={videoRef} autoPlay muted loop playsInline preload="auto" style={mediaStyle} />
       {diag && (
         <div style={{
           position: "absolute", top: 10, left: 10, zIndex: 80,
@@ -178,12 +167,16 @@ export default function VideoEngine({
           {diag}
         </div>
       )}
-      <canvas
-        ref={canvasRef}
+      {/* Cover de contenido (póster / imagen). Renderiza SOBRE el plano de video
+          del TV, así tapa el hueco de carga con el frame de la placa, no negro. */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        ref={coverRef}
+        alt=""
         style={{
           ...mediaStyle,
           opacity: 0,
-          transition: "opacity 350ms ease-out",
+          transition: "opacity 300ms ease",
           pointerEvents: "none",
         }}
       />

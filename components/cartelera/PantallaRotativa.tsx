@@ -121,9 +121,12 @@ export default function PantallaRotativa({ datos, videoLayer }: Props) {
     );
   };
 
-  // Helper: URL del medio de un item (video fijo o medio personalizado).
+  // Helpers: URL del medio y del PÓSTER (primer frame) de un item. Las placas
+  // fijas tienen póster generado; las personalizadas no (caen al modo directo).
   const srcDe = (item: Item) =>
     item.kind === "fija" ? `/placas/${item.data.slug}.mp4` : item.data.imagen_url;
+  const posterDe = (item: Item) =>
+    item.kind === "fija" ? `/placas/posters/${item.data.slug}.jpg` : undefined;
 
   // Índices acotados (por si el set de placas cambió en un refetch). El OBJETIVO
   // (reloj) define qué medio carga el VideoEngine; el MOSTRADO define el texto.
@@ -131,19 +134,22 @@ export default function PantallaRotativa({ datos, videoLayer }: Props) {
   const idxObjetivo = len ? ((indice % len) + len) % len : 0;
   const idxMostrado = len ? ((indiceMostrado % len) + len) % len : 0;
 
-  // PREFETCH del PRÓXIMO medio: como hay un solo <video> en el TV (su plano de
-  // hardware no se puede congelar en canvas), al cambiar de src tapa con NEGRO
-  // mientras carga. Calentando el cache HTTP del siguiente, ese hueco (= el
-  // negro entre placas) se reduce al mínimo. No usa un 2º <video> (saturaría el
-  // decoder del TV) — solo descarga los bytes. (Va antes del return temprano
-  // para no romper el orden de hooks.)
-  const proxSrc = len ? srcDe(items[(idxObjetivo + 1) % len]) : "";
+  // PREFETCH del PRÓXIMO medio + su póster: como hay un solo <video> en el TV,
+  // al cambiar de src su plano de hardware se pone negro mientras carga. El
+  // póster (img, sí renderiza en el TV) tapa ese hueco con el frame de la placa,
+  // pero tiene que estar ya en cache para aparecer sin parpadeo. Calentamos el
+  // cache HTTP del próximo video y de su póster. No usa un 2º <video> (saturaría
+  // el decoder). (Va antes del return temprano para no romper el orden de hooks.)
+  const prox = len ? items[(idxObjetivo + 1) % len] : null;
+  const proxSrc = prox ? srcDe(prox) : "";
+  const proxPoster = prox ? posterDe(prox) : undefined;
   useEffect(() => {
-    if (!proxSrc) return;
+    const urls = [proxSrc, proxPoster].filter(Boolean) as string[];
+    if (urls.length === 0) return;
     const c = new AbortController();
-    fetch(proxSrc, { signal: c.signal }).catch(() => {});
+    urls.forEach((u) => fetch(u, { signal: c.signal }).catch(() => {}));
     return () => c.abort();
-  }, [proxSrc]);
+  }, [proxSrc, proxPoster]);
 
   if (len === 0) {
     return <div style={{ width: "100%", height: "100%", backgroundColor: "#000" }} />;
@@ -152,11 +158,12 @@ export default function PantallaRotativa({ datos, videoLayer }: Props) {
   const objetivo = items[idxObjetivo];
   const mostrado = items[idxMostrado];
 
-  // Medio (src + tipo) que recibe el VideoEngine persistente. Los videos fijos
-  // se guardan ACOSTADOS 1920×1080 con la rotación HORNEADA (transpose=1), así
-  // el plano de video del TV los muestra ya girados, sin transform CSS.
+  // Medio (src + tipo + póster) que recibe el VideoEngine persistente. Los videos
+  // fijos se guardan ACOSTADOS 1920×1080 con la rotación HORNEADA (transpose=1),
+  // así el plano de video del TV los muestra ya girados, sin transform CSS.
   const src = srcDe(objetivo);
   const tipo: MediaTipo = objetivo.kind === "fija" || esVideoUrl(src) ? "video" : "imagen";
+  const poster = posterDe(objetivo);
 
   // Overlay del item MOSTRADO (no del objetivo): aparece recién cuando el video
   // nuevo está revelado (ver onReady), nunca sobre negro. Mientras carga la
@@ -170,7 +177,7 @@ export default function PantallaRotativa({ datos, videoLayer }: Props) {
   // capa (SSR / horizontal), se renderiza inline como fallback. Cuando el medio
   // objetivo se revela, avanzamos el índice mostrado → el texto entra en sync.
   const motor = (
-    <VideoEngine src={src} tipo={tipo} onReady={() => setIndiceMostrado(indice)} />
+    <VideoEngine src={src} tipo={tipo} poster={poster} onReady={() => setIndiceMostrado(indice)} />
   );
 
   return (
