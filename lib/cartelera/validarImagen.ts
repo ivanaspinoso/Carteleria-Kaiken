@@ -44,7 +44,7 @@ export function validarPlaca(meta: MetaImagen): ResultadoValidacion {
   const ratio = meta.width / meta.height;
   const desvio = Math.abs(ratio - RATIO_OBJETIVO) / RATIO_OBJETIVO;
   if (desvio > TOLERANCIA_RATIO) {
-    return { ok: true, warn: "La proporción no es 9:16 — puede verse recortada en pantalla." };
+    return { ok: true, warn: "No es del todo vertical (tipo historia de Instagram) — se mostrará completa igual, puede quedar con un borde." };
   }
   return { ok: true };
 }
@@ -63,7 +63,7 @@ export function validarVideo(meta: MetaImagen): ResultadoValidacion {
   const ratio = meta.width / meta.height;
   const desvio = Math.abs(ratio - RATIO_OBJETIVO) / RATIO_OBJETIVO;
   if (desvio > TOLERANCIA_RATIO) {
-    return { ok: true, warn: "La proporción no es 9:16 — puede verse recortado en pantalla." };
+    return { ok: true, warn: "No es del todo vertical (tipo historia de Instagram) — se mostrará completo igual, puede quedar con un borde." };
   }
   return { ok: true };
 }

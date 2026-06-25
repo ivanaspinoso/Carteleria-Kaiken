@@ -34,7 +34,7 @@ describe("validarPlaca", () => {
     // 1080×2400 supera el mínimo (1080×1920) pero es más alta que 9:16
     const r = validarPlaca({ ...base, width: 1080, height: 2400 });
     expect(r.ok).toBe(true);
-    expect(r.warn).toMatch(/proporción/i);
+    expect(r.warn).toMatch(/vertical/i);
   });
 
   it("acepta 9:16 exacto a mayor resolución sin warn", () => {

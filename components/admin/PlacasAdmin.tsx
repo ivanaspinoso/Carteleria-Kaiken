@@ -350,7 +350,9 @@ function UploadForm({ pantalla }: { pantalla: Pantalla }) {
     <div className="rounded-xl border border-dashed bg-card p-4 space-y-3">
       <p className="text-sm font-semibold">Subir nueva placa</p>
       <p className="text-xs text-muted-foreground">
-        Imagen (JPG/PNG, máx 5MB) o video (MP4/WEBM, máx 50MB). Vertical 1080×1920 (9:16).
+        Tiene que ser <strong>vertical</strong> (parada), como una historia de
+        Instagram. Medida ideal: <strong>1080 × 1920</strong>. Imagen JPG/PNG
+        hasta 5MB · Video MP4/WEBM hasta 50MB.
       </p>
 
       <input

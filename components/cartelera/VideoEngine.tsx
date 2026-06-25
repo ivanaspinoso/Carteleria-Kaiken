@@ -34,6 +34,7 @@ export default function VideoEngine({
   poster,
   rotar = 0,
   vp,
+  ajuste = "cover",
   onReady,
 }: {
   src: string;
@@ -52,6 +53,11 @@ export default function VideoEngine({
   // Tamaño real del viewport (px), para rotar a pantalla completa sin vw/vh
   // (los navegadores de Smart TV los calculan mal).
   vp?: { w: number; h: number };
+  // Cómo encaja el medio: "cover" llena la pantalla recortando lo que sobra
+  // (placas fijas, ya son 9:16); "contain" muestra el medio COMPLETO acomodado
+  // a su proporción (placas personalizadas: si no es 9:16 exacto, se ve entero
+  // con borde negro en vez de recortarse).
+  ajuste?: "cover" | "contain";
   // Se llama cuando el medio NUEVO ya está revelado (video pintando / imagen
   // cargada). PantallaRotativa lo usa para recién entonces mostrar el texto.
   onReady?: () => void;
@@ -69,7 +75,7 @@ export default function VideoEngine({
     inset: 0,
     width: "100%",
     height: "100%",
-    objectFit: "cover",
+    objectFit: ajuste,
   };
 
   // Wrapper de rotación del medio. Replica EXACTO el `.rotador-90` de pantalla
