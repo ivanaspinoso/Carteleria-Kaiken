@@ -47,5 +47,13 @@
     "tailwindcss": "^4",
     "typescript": "^5",
     "vitest": "^4.1.7"
-  }
+  },
+  "//browserslist": "Target: Smart TV 2020+. Los Smart TV usan Chromium atrasado: WebOS 2020 ~Chromium 68, Tizen 2020 ~76, 2021 ~79-85. Esos motores NO soportan ?./?? (Chrome 80) → sin este target el build no baja la sintaxis y el TV 2020 queda en pantalla blanca. Piso = Chromium 68 (el TV 2020 mas bajo). No afecta calidad de video/imagen (archivos estaticos). TVs pre-2020: usar un dispositivo externo (Android TV box / Fire Stick).",
+  "browserslist": [
+    "chrome >= 68",
+    "edge >= 79",
+    "firefox >= 68",
+    "safari >= 13",
+    "samsung >= 11"
+  ]
 }

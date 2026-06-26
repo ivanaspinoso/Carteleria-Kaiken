@@ -26,9 +26,11 @@ export default function HShell({
         backgroundColor: COLORS.cremaHorizontal,
         color: COLORS.violeta,
         fontFamily: `var(--font-montserrat), ${FONT_FAMILY}, sans-serif`,
-        display: "flex",
-        flexDirection: "column",
-        justifyContent: justify,
+        // grid (no flex) para que el `gap` ande en Smart TV con Chromium <84
+        // (ej. Tizen 2020): el grid-gap anda desde Chromium 57, el flex-gap
+        // recién desde 84. En columna, la distribución vertical va por alignContent.
+        display: "grid",
+        alignContent: justify,
         padding: `${pxH(48)} ${pxH(72)}`,
         gap: pxH(72),
         boxSizing: "border-box",
