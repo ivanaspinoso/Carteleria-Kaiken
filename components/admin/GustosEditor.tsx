@@ -45,7 +45,7 @@ export default function GustosEditor({ seleccionados, grupos, disabled, onGuarda
           <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground/80">
             {grupo.categoria}
           </p>
-          <div className="flex flex-wrap gap-1.5">
+          <div className="flex flex-wrap gap-2 sm:gap-1.5">
             {grupo.sabores.map((sabor) => {
               const activo = estaSel(sabor.valor);
               return (
@@ -55,7 +55,7 @@ export default function GustosEditor({ seleccionados, grupos, disabled, onGuarda
                   onClick={() => toggle(sabor.valor)}
                   disabled={disabled}
                   title={sabor.valor}
-                  className={`text-xs px-2.5 py-1 rounded-full border transition-colors disabled:opacity-50 ${
+                  className={`text-sm sm:text-xs px-3 py-2 sm:px-2.5 sm:py-1 rounded-full border transition-colors active:scale-95 disabled:opacity-50 ${
                     activo
                       ? "bg-primary text-primary-foreground border-primary"
                       : "bg-background text-muted-foreground border-border hover:border-primary/50"
@@ -78,7 +78,7 @@ export default function GustosEditor({ seleccionados, grupos, disabled, onGuarda
           <p className="text-[11px] font-semibold uppercase tracking-wide text-amber-600">
             Guardados que no coinciden (tocá para quitar)
           </p>
-          <div className="flex flex-wrap gap-1.5">
+          <div className="flex flex-wrap gap-2 sm:gap-1.5">
             {extras.map((extra) => (
               <button
                 key={extra}
@@ -86,7 +86,7 @@ export default function GustosEditor({ seleccionados, grupos, disabled, onGuarda
                 onClick={() => toggle(extra)}
                 disabled={disabled}
                 title="Gusto guardado que no coincide con un sabor actual — tocá para quitarlo"
-                className="text-xs px-2.5 py-1 rounded-full border bg-amber-500 text-white border-amber-500 transition-colors disabled:opacity-50"
+                className="text-sm sm:text-xs px-3 py-2 sm:px-2.5 sm:py-1 rounded-full border bg-amber-500 text-white border-amber-500 transition-colors active:scale-95 disabled:opacity-50"
               >
                 {extra}
               </button>

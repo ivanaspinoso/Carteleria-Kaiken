@@ -53,14 +53,14 @@ export default function PlacasAdmin({ fijas, personalizadas, kilo = null, grupos
   return (
     <div className="space-y-4">
       {/* Selector de pantalla */}
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <span className="text-xs text-muted-foreground">Pantalla:</span>
         {([1, 5] as Pantalla[]).map((n) => (
           <button
             key={n}
             type="button"
             onClick={() => setPantalla(n)}
-            className={`text-xs font-semibold px-3 py-1 rounded-full transition-all ${
+            className={`text-sm sm:text-xs font-semibold px-4 py-2 sm:px-3 sm:py-1 rounded-full transition-all active:scale-95 ${
               pantalla === n ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"
             }`}
           >
@@ -76,7 +76,7 @@ export default function PlacasAdmin({ fijas, personalizadas, kilo = null, grupos
             key={t}
             type="button"
             onClick={() => setTab(t)}
-            className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
+            className={`px-4 py-2.5 sm:py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
               tab === t ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"
             }`}
           >
@@ -123,19 +123,21 @@ function FijasList({ fijas, kilo, gruposGustos }: { fijas: PlacaFija[]; kilo: Pr
     <div className={`space-y-2 ${isPending ? "opacity-60" : ""}`}>
       {fijas.map((p, idx) => (
         <div key={p.id}>
-          <div className="rounded-xl border bg-card p-3 flex items-center gap-3">
+          <div className="rounded-xl border bg-card p-3 flex flex-wrap items-center gap-3">
             <div className="flex flex-col">
-              <button type="button" onClick={() => mover(idx, -1)} disabled={idx === 0 || isPending} className="disabled:opacity-30">
+              <button type="button" onClick={() => mover(idx, -1)} disabled={idx === 0 || isPending} className="p-1.5 sm:p-0.5 disabled:opacity-30 active:bg-muted rounded">
                 <ArrowUp size={15} />
               </button>
-              <button type="button" onClick={() => mover(idx, 1)} disabled={idx === fijas.length - 1 || isPending} className="disabled:opacity-30">
+              <button type="button" onClick={() => mover(idx, 1)} disabled={idx === fijas.length - 1 || isPending} className="p-1.5 sm:p-0.5 disabled:opacity-30 active:bg-muted rounded">
                 <ArrowDown size={15} />
               </button>
             </div>
-            <div className="flex-1 min-w-0">
+            <div className="flex-1 min-w-[140px]">
               <p className="text-sm font-semibold truncate">{p.nombre}</p>
               <p className="text-xs text-muted-foreground">{p.slug}</p>
             </div>
+            {/* Controles: en mobile bajan a su propia fila y se alinean a la derecha. */}
+            <div className="flex flex-wrap items-center gap-3 ml-auto justify-end">
             {PLACAS_PRECIOS[p.slug]?.map((f) => (
               <PrecioPlacaInput
                 key={f.campo}
@@ -160,6 +162,7 @@ function FijasList({ fijas, kilo, gruposGustos }: { fijas: PlacaFija[]; kilo: Pr
               disabled={isPending}
               onToggle={() => accion(() => actualizarPlacaFija(p.id, { activa: !p.activa }))}
             />
+            </div>
           </div>
 
           {/* Kilo Kaikén: precio y gustos se editan acá (sobre el producto). */}
@@ -219,12 +222,12 @@ function PersonalizadasTab({ pantalla, placas }: { pantalla: Pantalla; placas: P
 
       <div className={`space-y-2 ${isPending ? "opacity-60" : ""}`}>
         {placas.map((p, idx) => (
-          <div key={p.id} className="rounded-xl border bg-card p-3 flex items-center gap-3">
+          <div key={p.id} className="rounded-xl border bg-card p-3 flex flex-wrap items-center gap-3">
             <div className="flex flex-col">
-              <button type="button" onClick={() => mover(idx, -1)} disabled={idx === 0 || isPending} className="disabled:opacity-30">
+              <button type="button" onClick={() => mover(idx, -1)} disabled={idx === 0 || isPending} className="p-1.5 sm:p-0.5 disabled:opacity-30 active:bg-muted rounded">
                 <ArrowUp size={15} />
               </button>
-              <button type="button" onClick={() => mover(idx, 1)} disabled={idx === placas.length - 1 || isPending} className="disabled:opacity-30">
+              <button type="button" onClick={() => mover(idx, 1)} disabled={idx === placas.length - 1 || isPending} className="p-1.5 sm:p-0.5 disabled:opacity-30 active:bg-muted rounded">
                 <ArrowDown size={15} />
               </button>
             </div>
@@ -234,9 +237,11 @@ function PersonalizadasTab({ pantalla, placas }: { pantalla: Pantalla; placas: P
               // eslint-disable-next-line @next/next/no-img-element
               <img src={p.imagen_url} alt={p.nombre} className="h-16 w-9 object-cover rounded border bg-muted" />
             )}
-            <div className="flex-1 min-w-0">
+            <div className="flex-1 min-w-[120px]">
               <p className="text-sm font-semibold truncate">{p.nombre}</p>
             </div>
+            {/* Controles: en mobile bajan a su propia fila y se alinean a la derecha. */}
+            <div className="flex items-center gap-3 ml-auto justify-end">
             <DuracionInput
               valor={p.duracion}
               disabled={isPending}
@@ -253,11 +258,12 @@ function PersonalizadasTab({ pantalla, placas }: { pantalla: Pantalla; placas: P
                 if (confirm(`¿Borrar "${p.nombre}"?`)) accion(() => borrarPlacaPersonalizada(p.id));
               }}
               disabled={isPending}
-              className="text-destructive hover:bg-destructive/10 rounded p-1.5"
+              className="text-destructive hover:bg-destructive/10 active:bg-destructive/20 rounded-lg p-2.5 sm:p-1.5"
               aria-label="Borrar"
             >
               <Trash2 size={16} />
             </button>
+            </div>
           </div>
         ))}
         {placas.length === 0 && <p className="text-center text-muted-foreground py-8 text-sm">No hay placas personalizadas.</p>}
@@ -344,7 +350,7 @@ function UploadForm({ pantalla }: { pantalla: Pantalla }) {
     });
   }
 
-  const inputClass = "w-full border rounded-md px-3 py-2 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-ring";
+  const inputClass = "w-full border rounded-md px-3 py-2 text-base sm:text-sm bg-background focus:outline-none focus:ring-2 focus:ring-ring";
 
   return (
     <div className="rounded-xl border border-dashed bg-card p-4 space-y-3">
@@ -373,7 +379,7 @@ function UploadForm({ pantalla }: { pantalla: Pantalla }) {
               type="button"
               onClick={() => setDestino(d)}
               disabled={isPending}
-              className={`text-xs font-semibold px-3 py-1 rounded-full transition-all ${
+              className={`text-sm sm:text-xs font-semibold px-4 py-2 sm:px-3 sm:py-1 rounded-full transition-all active:scale-95 ${
                 destino === d ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"
               }`}
             >
@@ -383,7 +389,7 @@ function UploadForm({ pantalla }: { pantalla: Pantalla }) {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <input type="text" value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Nombre" disabled={isPending} className={inputClass} />
         <div className="flex items-center gap-2">
           <label className="text-xs text-muted-foreground">Dur. (s)</label>
@@ -406,7 +412,7 @@ function UploadForm({ pantalla }: { pantalla: Pantalla }) {
         type="button"
         onClick={subir}
         disabled={isPending || !file}
-        className="text-sm bg-primary text-primary-foreground rounded px-4 py-1.5 font-medium disabled:opacity-50"
+        className="text-sm bg-primary text-primary-foreground rounded-lg px-5 py-3 sm:px-4 sm:py-1.5 font-medium disabled:opacity-50 active:scale-95 transition-transform"
       >
         {isPending ? "Subiendo…" : "Subir placa"}
       </button>
@@ -454,7 +460,7 @@ function PrecioPlacaInput({
           onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
           disabled={disabled}
           placeholder="—"
-          className="w-20 border rounded px-2 py-1 text-sm bg-background text-right"
+          className="w-20 border rounded px-2 py-2 sm:py-1 text-base sm:text-sm bg-background text-right"
           aria-label={`Precio ${label}`}
         />
       </div>
@@ -493,7 +499,7 @@ function PrecioProductoInput({
         onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
         disabled={disabled}
         placeholder="—"
-        className="w-24 border rounded px-2 py-1 text-sm bg-background text-right"
+        className="w-24 border rounded px-2 py-2 sm:py-1 text-base sm:text-sm bg-background text-right"
         aria-label="Precio del Kilo Kaikén"
       />
     </div>
@@ -511,7 +517,7 @@ function DuracionInput({ valor, disabled, onGuardar }: { valor: number; disabled
         onChange={(e) => setD(Number(e.target.value))}
         onBlur={() => d !== valor && d > 0 && onGuardar(d)}
         disabled={disabled}
-        className="w-14 border rounded px-2 py-1 text-sm bg-background text-center"
+        className="w-14 border rounded px-2 py-2 sm:py-1 text-base sm:text-sm bg-background text-center"
         aria-label="Duración en segundos"
       />
       <span className="text-xs text-muted-foreground">s</span>
@@ -525,7 +531,7 @@ function ActivaToggle({ activa, disabled, onToggle }: { activa: boolean; disable
       type="button"
       onClick={onToggle}
       disabled={disabled}
-      className={`text-xs font-semibold px-3 py-1 rounded-full transition-all ${
+      className={`text-sm sm:text-xs font-semibold px-4 py-2 sm:px-3 sm:py-1 rounded-full transition-all active:scale-95 ${
         activa ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-200" : "bg-muted text-muted-foreground hover:bg-muted/80"
       }`}
     >

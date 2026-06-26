@@ -8,7 +8,7 @@ import { createClient } from "@/lib/supabase/client";
 import { login, cambiarPassword, type LoginState, type CambioState } from "./actions";
 
 const inputClass =
-  "w-full border rounded-xl px-4 py-2.5 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-ring transition-shadow";
+  "w-full border rounded-xl px-4 py-3 sm:py-2.5 text-base sm:text-sm bg-background focus:outline-none focus:ring-2 focus:ring-ring transition-shadow";
 
 // Input de contraseña con botón "ojo" para mostrar/ocultar.
 function PasswordInput(props: React.InputHTMLAttributes<HTMLInputElement>) {

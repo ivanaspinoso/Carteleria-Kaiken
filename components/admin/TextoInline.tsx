@@ -73,8 +73,8 @@ export default function TextoInline({
         disabled={disabled}
         title="Tocar para editar"
         className={`
-          text-left rounded-md px-1.5 py-0.5 -mx-1.5 max-w-full truncate transition-colors
-          ${disabled ? "opacity-50 cursor-not-allowed" : "hover:bg-muted cursor-pointer"}
+          text-left rounded-md px-1.5 py-1.5 sm:py-0.5 -mx-1.5 max-w-full truncate transition-colors
+          ${disabled ? "opacity-50 cursor-not-allowed" : "hover:bg-muted active:bg-muted cursor-pointer"}
           ${esTitulo ? "text-sm font-medium leading-snug" : "text-xs"}
           ${vacio ? "text-muted-foreground/50 italic" : tachado ? "line-through text-muted-foreground/60" : esTitulo ? "text-foreground" : "text-muted-foreground"}
         `}
@@ -97,21 +97,24 @@ export default function TextoInline({
         onBlur={() => setEditando(false)}
         aria-label={ariaLabel}
         className={`
-          flex-1 min-w-0 border rounded-lg px-2.5 py-1 bg-background
+          flex-1 min-w-0 border rounded-lg px-2.5 py-2 sm:py-1 bg-background
           focus:outline-none focus:ring-2 focus:ring-ring
-          ${esTitulo ? "text-sm font-medium" : "text-xs"}
+          ${esTitulo ? "text-base sm:text-sm font-medium" : "text-base sm:text-xs"}
         `}
       />
-      {/* onPointerDown + preventDefault evita que onBlur se dispare antes del click */}
+      {/* onPointerDown + preventDefault evita que onBlur se dispare antes del click.
+          Botones grandes (≥44px) para tocar cómodo con el dedo en celu. */}
       <button
         type="button"
         onPointerDown={(e) => { e.preventDefault(); guardar(); }}
-        className="text-xs bg-primary text-primary-foreground rounded-lg px-2 py-1 font-semibold flex-shrink-0"
+        aria-label="Guardar"
+        className="text-sm sm:text-xs bg-primary text-primary-foreground rounded-lg px-3 py-2.5 sm:px-2 sm:py-1 font-semibold flex-shrink-0"
       >✓</button>
       <button
         type="button"
         onPointerDown={(e) => { e.preventDefault(); setEditando(false); }}
-        className="text-xs border rounded-lg px-2 py-1 text-muted-foreground hover:text-foreground flex-shrink-0"
+        aria-label="Cancelar"
+        className="text-sm sm:text-xs border rounded-lg px-3 py-2.5 sm:px-2 sm:py-1 text-muted-foreground hover:text-foreground flex-shrink-0"
       >✕</button>
     </div>
   );

@@ -58,7 +58,7 @@ function Seccion({
           type="button"
           onClick={onToggleActiva}
           disabled={isPending}
-          className={`text-xs font-semibold px-3 py-1 rounded-full transition-all ${
+          className={`text-sm sm:text-xs font-semibold px-4 py-2 sm:px-3 sm:py-1 rounded-full transition-all active:scale-95 ${
             activa
               ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-200"
               : "bg-muted text-muted-foreground hover:bg-muted/80"
@@ -75,7 +75,7 @@ function Seccion({
           type="button"
           onClick={onGuardar}
           disabled={isPending}
-          className="text-xs bg-primary text-primary-foreground rounded px-4 py-1.5 font-medium disabled:opacity-50"
+          className="text-sm sm:text-xs bg-primary text-primary-foreground rounded-lg px-5 py-2.5 sm:px-4 sm:py-1.5 font-medium disabled:opacity-50 active:scale-95 transition-transform"
         >
           Guardar
         </button>
@@ -109,7 +109,7 @@ function useGuardar(tipo: PromoKaikenTipo) {
 }
 
 const selectClass =
-  "w-full border rounded-md px-3 py-2 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-ring";
+  "w-full border rounded-md px-3 py-2.5 sm:py-2 text-base sm:text-sm bg-background focus:outline-none focus:ring-2 focus:ring-ring";
 
 // ── Gusto del Día ─────────────────────────────────────────────────────────────
 
@@ -166,13 +166,13 @@ function NovedadDelMes({ promo, productos }: { promo: PromoRow | null; productos
       isPending={isPending}
       estado={estado}
     >
-      <div className="flex gap-4 text-sm">
-        <label className="flex items-center gap-1.5">
-          <input type="radio" checked={modo === "producto"} onChange={() => setModo("producto")} disabled={isPending} />
+      <div className="flex gap-3 text-sm">
+        <label className="flex items-center gap-2 cursor-pointer py-1.5 pr-3 select-none">
+          <input type="radio" checked={modo === "producto"} onChange={() => setModo("producto")} disabled={isPending} className="size-4 accent-primary" />
           Producto
         </label>
-        <label className="flex items-center gap-1.5">
-          <input type="radio" checked={modo === "texto"} onChange={() => setModo("texto")} disabled={isPending} />
+        <label className="flex items-center gap-2 cursor-pointer py-1.5 pr-3 select-none">
+          <input type="radio" checked={modo === "texto"} onChange={() => setModo("texto")} disabled={isPending} className="size-4 accent-primary" />
           Texto libre
         </label>
       </div>

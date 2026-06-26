@@ -24,7 +24,10 @@ interface Props {
 
 export default function FilaProducto({ producto, onPrecio, onPrecioAlt, onStock, onTexto, mostrarPrecioAlt, mostrarDescripcion, mostrarUnidad, disabled }: Props) {
   return (
-    <div className="flex items-center gap-4 px-5 py-3.5 hover:bg-muted/30 transition-colors">
+    <div className="flex flex-col gap-2.5 px-4 py-3 sm:flex-row sm:items-center sm:gap-4 sm:px-5 sm:py-3.5 hover:bg-muted/30 transition-colors">
+
+      {/* Grupo nombre: dot + nombre/descripción. En mobile ocupa su propia fila. */}
+      <div className="flex items-center gap-3 flex-1 min-w-0">
 
       {/* Dot de estado — escaneo visual rápido */}
       <div className={`
@@ -77,6 +80,11 @@ export default function FilaProducto({ producto, onPrecio, onPrecioAlt, onStock,
           </div>
         )}
       </div>
+      </div>
+
+      {/* Grupo controles: stock + precio(s). En mobile baja a su fila y se reparte
+          a lo ancho; en desktop queda a la derecha. */}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 justify-between sm:flex-nowrap sm:justify-end sm:gap-4">
 
       {/* Toggle stock */}
       <StockToggle
@@ -112,6 +120,7 @@ export default function FilaProducto({ producto, onPrecio, onPrecioAlt, onStock,
           disabled={disabled}
         />
       )}
+      </div>
     </div>
   );
 }

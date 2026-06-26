@@ -70,7 +70,7 @@ export default function PrecioInline({ precio, onChange, disabled }: Props) {
         title="Tocar para editar precio"
         className={`
           font-mono text-sm font-semibold tabular-nums text-right
-          rounded-lg px-2.5 py-1.5 min-w-[96px] transition-colors
+          rounded-lg px-3 py-2.5 sm:px-2.5 sm:py-1.5 min-w-[96px] transition-colors
           ${disabled ? "opacity-50 cursor-not-allowed" : "hover:bg-muted cursor-pointer"}
           ${precio == null ? "text-muted-foreground" : "text-foreground"}
         `}
@@ -96,18 +96,21 @@ export default function PrecioInline({ precio, onChange, disabled }: Props) {
           min="0.5"
           max="100000"
           step="any"
-          className="w-24 text-right border rounded-lg px-3 py-1.5 text-sm font-mono bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+          className="w-24 text-right border rounded-lg px-3 py-2 sm:py-1.5 text-base sm:text-sm font-mono bg-background focus:outline-none focus:ring-2 focus:ring-ring"
         />
-        {/* onPointerDown + preventDefault evita que onBlur se dispare antes del click */}
+        {/* onPointerDown + preventDefault evita que onBlur se dispare antes del click.
+            Botones grandes (≥44px) para tocar cómodo con el dedo en celu. */}
         <button
           type="button"
           onPointerDown={e => { e.preventDefault(); intentarGuardar(); }}
-          className="text-xs bg-primary text-primary-foreground rounded-lg px-2.5 py-1.5 font-semibold"
+          aria-label="Guardar precio"
+          className="text-sm sm:text-xs bg-primary text-primary-foreground rounded-lg px-3.5 py-2.5 sm:px-2.5 sm:py-1.5 font-semibold"
         >✓</button>
         <button
           type="button"
           onPointerDown={e => { e.preventDefault(); cancelar(); }}
-          className="text-xs border rounded-lg px-2.5 py-1.5 text-muted-foreground hover:text-foreground"
+          aria-label="Cancelar"
+          className="text-sm sm:text-xs border rounded-lg px-3.5 py-2.5 sm:px-2.5 sm:py-1.5 text-muted-foreground hover:text-foreground"
         >✕</button>
       </div>
 
@@ -122,12 +125,12 @@ export default function PrecioInline({ precio, onChange, disabled }: Props) {
             <button
               type="button"
               onPointerDown={e => { e.preventDefault(); confirmarConAdvertencia(); }}
-              className="bg-amber-500 text-white rounded-lg px-2.5 py-1 font-semibold"
+              className="bg-amber-500 text-white rounded-lg px-3.5 py-2 sm:px-2.5 sm:py-1 font-semibold active:scale-95"
             >Guardar igual</button>
             <button
               type="button"
               onPointerDown={e => { e.preventDefault(); setAdvertencia(null); }}
-              className="border rounded-lg px-2.5 py-1"
+              className="border rounded-lg px-3.5 py-2 sm:px-2.5 sm:py-1 active:scale-95"
             >Corregir</button>
           </div>
         </div>
