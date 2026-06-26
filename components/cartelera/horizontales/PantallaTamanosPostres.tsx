@@ -30,11 +30,11 @@ export default function PantallaTamanosPostres({ datos }: { datos: DatosPantalla
   return (
     <HShell>
       {/* ===== Tamaños ===== */}
-      <section style={{ display: "flex", flexDirection: "column", gap: pxH(30) }}>
+      <section style={{ display: "grid", gap: pxH(30) }}>
         <TituloConLineas textoBold="TAMAÑOS" textoLight="" sizePx={48} bleedX={72} />
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: pxH(44) }}>
           {/* Columna izquierda: Vasos */}
-          <div style={{ display: "flex", flexDirection: "column", gap: pxH(16) }}>
+          <div style={{ display: "grid", gap: pxH(16) }}>
             <div style={{ fontSize: pxH(23), fontWeight: 400 }}>Vasos</div>
             {vasos.map((p, i) => (
               <Fragment key={p.id}>
@@ -51,10 +51,10 @@ export default function PantallaTamanosPostres({ datos }: { datos: DatosPantalla
           </div>
 
           {/* Columna derecha: Kilos + Kilos Especiales */}
-          <div style={{ display: "flex", flexDirection: "column", gap: pxH(16) }}>
-            <div style={{ display: "flex", justifyContent: "flex-start", alignItems: "flex-end", gap: pxH(40) }}>
+          <div style={{ display: "grid", gap: pxH(16) }}>
+            <div style={{ display: "grid", gridAutoFlow: "column", justifyContent: "start", alignItems: "end", gap: pxH(40) }}>
               {kilos.map((p) => (
-                <div key={p.id} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: pxH(8), opacity: p.en_stock ? 1 : 0.5 }}>
+                <div key={p.id} style={{ display: "grid", justifyItems: "center", gap: pxH(8), opacity: p.en_stock ? 1 : 0.5 }}>
                   {p.imagen_url ? <IconoImg src={p.imagen_url} sizePx={150} /> : null}
                   <Precio precio={p.precio} enStock={p.en_stock} fontPx={24} />
                 </div>
@@ -76,15 +76,15 @@ export default function PantallaTamanosPostres({ datos }: { datos: DatosPantalla
       </section>
 
       {/* ===== Postres Helados ===== */}
-      <section style={{ display: "flex", flexDirection: "column", gap: pxH(30) }}>
+      <section style={{ display: "grid", gap: pxH(30) }}>
         <TituloConLineas textoLight="POSTRES" textoBold="HELADOS" sizePx={48} bleedX={72} />
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: pxH(60) }}>
           {postresCols.map((col, i) => (
-            <div key={i} style={{ display: "flex", flexDirection: "column", gap: pxH(14) }}>
+            <div key={i} style={{ display: "grid", gap: pxH(14) }}>
               {/* Headers Chico / Grande — visibles solo en la columna con precio_alt
                   (derecha). En la izquierda se renderiza igual pero oculto, para que
                   las filas de postres queden alineadas verticalmente entre columnas. */}
-              <div style={{ display: "flex", justifyContent: "flex-end", gap: pxH(8), visibility: i === 1 ? "visible" : "hidden" }}>
+              <div style={{ display: "grid", gridAutoFlow: "column", justifyContent: "end", gap: pxH(8), visibility: i === 1 ? "visible" : "hidden" }}>
                 <span style={{ width: pxH(90), textAlign: "right", fontSize: pxH(21), textDecoration: "underline", textDecorationColor: COLORS.violeta, textDecorationThickness: "1px", textUnderlineOffset: pxH(5) }}>Chico</span>
                 <span style={{ width: pxH(90), textAlign: "right", fontSize: pxH(21), textDecoration: "underline", textDecorationColor: COLORS.violeta, textDecorationThickness: "1px", textUnderlineOffset: pxH(5) }}>Grande</span>
               </div>

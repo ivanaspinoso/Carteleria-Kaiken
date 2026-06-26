@@ -163,6 +163,19 @@
   max-width: 100%;
 }
 
+/* Fallback TVs viejos (Tizen/WebOS pre-2021 sin `aspect-ratio`): sin esta regla
+   el lienzo queda con height/width auto = 0 y la cartelera no se ve. En el TV
+   real el panel YA tiene la proporción del contenido (16:9 horizontales,
+   9:16 verticales montadas giradas), así que llenar el 100% se ve idéntico al
+   letterbox. El letterbox solo importa en monitores de dev con otra proporción. */
+@supports not (aspect-ratio: 1 / 1) {
+  .marco-pantalla__lienzo[data-orientacion="horizontal"],
+  .marco-pantalla__lienzo[data-orientacion="vertical"] {
+    width: 100%;
+    height: 100%;
+  }
+}
+
 /* ============================================================
    Rotación por software (?rotar=90) — para PROBAR una pantalla
    vertical en un monitor/TV horizontal sin girarlo físicamente.

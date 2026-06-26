@@ -54,7 +54,11 @@ export default function TituloConLineas({
   return (
     <div
       style={{
-        display: "flex",
+        // grid (no flex) para que el `gap` ande en Smart TV con Chromium <84
+        // (ej. Tizen 2020). Las 2 líneas ocupan 1fr a cada lado y el texto el
+        // centro (auto); reemplaza el flex:1 de `.titulo-lineas__linea`.
+        display: "grid",
+        gridTemplateColumns: "1fr auto 1fr",
         alignItems: "center",
         gap: scale(size * 1.5), // respiración línea ↔ texto (~1.5em)
         width: "auto",
