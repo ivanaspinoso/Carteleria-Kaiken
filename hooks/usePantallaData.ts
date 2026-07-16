@@ -99,6 +99,13 @@ export function usePantallaData(pantallaId: number, initial: DatosPantalla) {
     };
     scheduleRefresh();
 
+    // Debug por URL (?debug=1): el control remoto del TV no tiene letras, así
+    // que el atajo de teclado no sirve justo donde más se necesita. La URL es
+    // lo único que se puede tipear cómodo en el navegador del TV.
+    if (new URLSearchParams(window.location.search).get("debug") === "1") {
+      setDebug(true);
+    }
+
     // Debug: presionar D cinco veces seguidas en menos de 2s
     const handleKey = (e: KeyboardEvent) => {
       if (e.key.toLowerCase() !== "d") {
