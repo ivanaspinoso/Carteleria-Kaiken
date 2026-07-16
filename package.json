@@ -4,7 +4,9 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
-    "build": "next build --turbopack",
+    "//build": "SIN --turbopack a propósito: Turbopack no transpila su propio runtime (emite ?. y ??) y el Samsung TU5300 (Chromium 76) no lo parsea → muere todo el JS. Webpack sí respeta el browserslist. check:tv lo verifica.",
+    "build": "next build && node scripts/check-tv-compat.mjs",
+    "check:tv": "node scripts/check-tv-compat.mjs",
     "start": "next start",
     "lint": "eslint",
     "db:migrate": "node scripts/apply-migrations.mjs",
@@ -40,6 +42,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@vitest/coverage-v8": "^4.1.7",
+    "acorn": "^8.17.0",
     "eslint": "^9",
     "eslint-config-next": "15.5.18",
     "ffmpeg-static": "^5.3.0",
