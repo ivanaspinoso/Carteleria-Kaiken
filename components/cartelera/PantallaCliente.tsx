@@ -28,6 +28,23 @@ export default function PantallaCliente({ pantallaId, initial }: Props) {
   // puede forzar/ajustar por URL con ?rotar=90 / ?rotar=-90 / ?rotar=0.
   const [rotacion, setRotacion] = useState<0 | 90 | -90>(0);
   const [enFullscreen, setEnFullscreen] = useState(false);
+  // Qué pasó en el último intento de pantalla completa. El TV puede RECHAZAR el
+  // pedido sin decir nada (se ve igual que si el botón no hiciera nada), así que
+  // guardamos el resultado y lo mostramos en el panel de debug (D×5).
+  const [fsInfo, setFsInfo] = useState("sin intentos");
+  // Qué APIs de pantalla completa existen en ESTE navegador, y cuál es. Se lee
+  // al montar (no en el server) y se muestra en el panel de debug.
+  const [fsApi, setFsApi] = useState({ estandar: false, webkit: false, ua: "" });
+  useEffect(() => {
+    const el = document.documentElement as HTMLElement & {
+      webkitRequestFullscreen?: () => void;
+    };
+    setFsApi({
+      estandar: typeof el.requestFullscreen === "function",
+      webkit: typeof el.webkitRequestFullscreen === "function",
+      ua: navigator.userAgent,
+    });
+  }, []);
 
   // Tamaño REAL del viewport en px. Para rotar el contenido a pantalla completa
   // usamos px explícitos (no 100vh/100vw): los navegadores de Smart TV (Tizen/
@@ -57,10 +74,19 @@ export default function PantallaCliente({ pantallaId, initial }: Props) {
     else if (r === "-90") setRotacion(-90);
     else if (r === "0" || r === "no") setRotacion(0);
     else if (initial.pantalla.orientacion === "vertical") setRotacion(90);
-    const onFs = () => setEnFullscreen(Boolean(document.fullscreenElement));
+    // El navegador de los Smart TV Samsung (Tizen) usa la API con prefijo
+    // `webkit`, no la estándar → hay que mirar ambos para saber si estamos en
+    // pantalla completa y escuchar los dos nombres de evento.
+    const doc = document as Document & { webkitFullscreenElement?: Element | null };
+    const onFs = () =>
+      setEnFullscreen(Boolean(doc.fullscreenElement || doc.webkitFullscreenElement));
     document.addEventListener("fullscreenchange", onFs);
+    document.addEventListener("webkitfullscreenchange", onFs);
     onFs();
-    return () => document.removeEventListener("fullscreenchange", onFs);
+    return () => {
+      document.removeEventListener("fullscreenchange", onFs);
+      document.removeEventListener("webkitfullscreenchange", onFs);
+    };
     // Solo al montar: la URL y la orientación inicial definen el estado base.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -121,10 +147,37 @@ export default function PantallaCliente({ pantallaId, initial }: Props) {
   }, []);
 
   function toggleFullscreen() {
-    if (document.fullscreenElement) {
-      document.exitFullscreen?.().catch(() => {});
-    } else {
-      document.documentElement.requestFullscreen?.().catch(() => {});
+    // Tizen (Samsung) y otros navegadores de TV exponen la API con prefijo
+    // `webkit`. Probamos la estándar y caemos a la webkit para que el botón
+    // funcione en los Smart TV, no solo en Chrome de escritorio.
+    const doc = document as Document & {
+      webkitFullscreenElement?: Element | null;
+      webkitExitFullscreen?: () => void;
+    };
+    const el = document.documentElement as HTMLElement & {
+      webkitRequestFullscreen?: () => void;
+    };
+    const enFs = doc.fullscreenElement || doc.webkitFullscreenElement;
+    try {
+      if (enFs) {
+        if (doc.exitFullscreen) doc.exitFullscreen().catch((e: Error) => setFsInfo(`salir rechazado: ${e?.name}`));
+        else if (doc.webkitExitFullscreen) doc.webkitExitFullscreen();
+        else setFsInfo("sin API para salir");
+      } else if (el.requestFullscreen) {
+        setFsInfo("pedido estandar...");
+        el.requestFullscreen().then(
+          () => setFsInfo("estandar OK"),
+          (e: Error) => setFsInfo(`estandar RECHAZADO: ${e?.name}: ${e?.message}`),
+        );
+      } else if (el.webkitRequestFullscreen) {
+        el.webkitRequestFullscreen();
+        setFsInfo("uso webkit (sin promesa)");
+      } else {
+        setFsInfo("SIN API de fullscreen en este TV");
+      }
+    } catch (e) {
+      // Algunos navegadores de TV tiran la excepción en vez de rechazar.
+      setFsInfo(`excepcion: ${(e as Error)?.name}: ${(e as Error)?.message}`);
     }
   }
 
@@ -253,6 +306,17 @@ export default function PantallaCliente({ pantallaId, initial }: Props) {
           <p>Placas fijas activas: {datos.placas_fijas.filter((p) => p.activa).length}/{datos.placas_fijas.length}</p>
           <p>Placas propias activas: {datos.placas_personalizadas.filter((p) => p.activa).length}/{datos.placas_personalizadas.length}</p>
           <p>Orientación: {pantalla.orientacion}{pantalla.orientacion === "vertical" ? ` (desfase ${pantalla.config.desfase_segundos ?? 0}s)` : ""}</p>
+
+          {/* Diagnóstico de PANTALLA COMPLETA: para saber por qué el botón no
+              responde en un TV puntual (¿falta la API? ¿el TV la rechaza?). */}
+          <p style={{ color: "#facc15", fontWeight: 700, marginTop: "0.5vw" }}>◉ FULLSCREEN</p>
+          <p>API estándar: {fsApi.estandar ? "sí" : "NO"} — webkit: {fsApi.webkit ? "sí" : "NO"}</p>
+          <p>En fullscreen: {enFullscreen ? "sí" : "no"}</p>
+          <p style={{ whiteSpace: "normal" }}>Último intento: {fsInfo}</p>
+          <p style={{ whiteSpace: "normal", fontSize: "0.7vw", color: "rgba(255,255,255,0.55)" }}>
+            UA: {fsApi.ua}
+          </p>
+
           <p style={{ marginTop: "0.5vw", color: "rgba(255,255,255,0.4)", fontSize: "0.75vw" }}>
             D×5 para cerrar
           </p>

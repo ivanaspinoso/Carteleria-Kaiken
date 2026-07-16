@@ -45,3 +45,6 @@ next-env.d.ts
 
 # Capturas temporales de calibración pixel-perfect (scripts de screenshot)
 scripts/_*.png
+
+# herramientas locales (plugin caveman)
+skills-lock.json
