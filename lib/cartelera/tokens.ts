@@ -47,6 +47,44 @@ export function pxH(designPx: number): string {
   return `${(designPx / BASE_HORIZONTAL_WIDTH) * 100}vw`;
 }
 
+/**
+ * Escala de LECTURA de las horizontales. En el local las tipografías se veían
+ * chicas a la distancia real de la heladería (el cuerpo estaba en 17-30px de
+ * diseño contra 48px de los títulos, que sí se leían bien).
+ *
+ * Multiplica solo el TEXTO de producto/precio, no los títulos ni los espacios
+ * ni los íconos, así crece la letra sin mover el diseño de lugar.
+ *
+ * HShell busca el mayor valor entre MIN y MAX con el que el contenido entra, y
+ * lo aplica por pantalla: la de cafetería tiene más aire que la de sabores y
+ * aprovecha más. No es un número fijo porque los productos los edita el dueño:
+ * agregar uno tiene que achicar la letra, no recortar la última fila.
+ *
+ * - MIN: piso; si ni así entra, HShell recorta (subir MAX no lo arregla).
+ * - MAX: techo, para que una pantalla con pocos productos no agigante el texto
+ *   y se despegue del diseño.
+ */
+export const ESCALA_TEXTO_MIN = 1;
+export const ESCALA_TEXTO_MAX = 1.5;
+
+/**
+ * Colchón (en px de diseño, base 1920) que HShell deja libre al elegir escala.
+ * La búsqueda converge al borde exacto de lo que entra, y las fuentes no
+ * rasterizan idéntico en el navegador del TV que en Chrome de escritorio: sin
+ * colchón, un par de píxeles de diferencia recortan la última fila.
+ */
+export const MARGEN_SEGURIDAD_PX = 16;
+
+/**
+ * Igual que `pxH` pero afectado por `--escala-texto` (la variable que setea
+ * HShell con ESCALA_TEXTO_HORIZONTAL). Para tamaños de fuente del cuerpo y para
+ * los anchos de columna atados a esos textos (si crece la letra pero no la
+ * columna del precio, se rompe la alineación).
+ */
+export function pxHT(designPx: number): string {
+  return `calc(var(--escala-texto, 1) * ${(designPx / BASE_HORIZONTAL_WIDTH) * 100}vw)`;
+}
+
 // Tokens compartidos por las pantallas horizontales (Cambio 6).
 export const TYPOGRAPHY_HORIZONTAL = {
   papelFondo: COLORS.cremaHorizontal, // #fffff9

@@ -1,5 +1,5 @@
 import type { DatosPantalla, Producto } from "@/lib/types";
-import { COLORS, pxH } from "@/lib/cartelera/tokens";
+import { COLORS, pxH, pxHT } from "@/lib/cartelera/tokens";
 import TituloConLineas from "../TituloConLineas";
 import HShell from "./HShell";
 import { Precio, Relleno, productosDe } from "./helpers";
@@ -29,17 +29,17 @@ export default function PantallaCafeteriaPasteleria({ datos }: { datos: DatosPan
             <div key={i} style={{ position: "relative", display: "grid", gap: pxH(42) }}>
               {col.map((p) => (
                 <div key={p.id} style={{ display: "flex", alignItems: "flex-end", opacity: p.en_stock ? 1 : 0.5 }}>
-                  <span style={{ fontSize: pxH(24), fontWeight: 700, textDecoration: p.en_stock ? undefined : "line-through" }}>{p.nombre}</span>
+                  <span style={{ fontSize: pxHT(24), fontWeight: 700, textDecoration: p.en_stock ? undefined : "line-through" }}>{p.nombre}</span>
                   <Relleno />
                   <Precio precio={p.precio} enStock={p.en_stock} fontPx={24} />
                   {p.unidad ? (
                     <span
                       style={{
-                        width: pxH(70),
+                        width: pxHT(70),
                         textAlign: "right",
                         marginLeft: pxH(20),
                         paddingLeft: pxH(18),
-                        fontSize: pxH(18),
+                        fontSize: pxHT(18),
                         fontWeight: 600,
                         color: COLORS.violeta,
                         opacity: 0.85,
@@ -57,7 +57,9 @@ export default function PantallaCafeteriaPasteleria({ datos }: { datos: DatosPan
                   position: "absolute",
                   top: 0,
                   bottom: 0,
-                  right: pxH(70),
+                  // Debe coincidir con el `width` de la columna de ml (pxHT(70)):
+                  // si crece la letra y la línea no, se despega del texto.
+                  right: pxHT(70),
                   width: 0,
                   borderLeft: `1px solid ${COLORS.violeta}`,
                 }}
@@ -75,7 +77,7 @@ export default function PantallaCafeteriaPasteleria({ datos }: { datos: DatosPan
             <div key={i} style={{ display: "grid", gap: pxH(42) }}>
               {col.map((p) => (
                 <div key={p.id} style={{ display: "flex", alignItems: "flex-end", opacity: p.en_stock ? 1 : 0.5 }}>
-                  <span style={{ fontSize: pxH(24), fontWeight: 700, textDecoration: p.en_stock ? undefined : "line-through" }}>{p.nombre}</span>
+                  <span style={{ fontSize: pxHT(24), fontWeight: 700, textDecoration: p.en_stock ? undefined : "line-through" }}>{p.nombre}</span>
                   <Relleno />
                   <Precio precio={p.precio} enStock={p.en_stock} fontPx={24} />
                 </div>

@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import { COLORS, pxH } from "@/lib/cartelera/tokens";
+import { COLORS, pxH, pxHT } from "@/lib/cartelera/tokens";
 import { formatPrecio } from "@/lib/format";
 import type { Producto } from "@/lib/types";
 
@@ -29,7 +29,7 @@ export function Precio({
   return (
     <span
       style={{
-        fontSize: pxH(fontPx),
+        fontSize: pxHT(fontPx),
         fontWeight: 400,
         color: COLORS.violeta,
         opacity: sinStock ? 0.5 : 1,

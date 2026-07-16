@@ -1,6 +1,6 @@
 import { Fragment } from "react";
 import type { DatosPantalla, Producto } from "@/lib/types";
-import { COLORS, pxH } from "@/lib/cartelera/tokens";
+import { COLORS, pxH, pxHT } from "@/lib/cartelera/tokens";
 import TituloConLineas from "../TituloConLineas";
 import HShell from "./HShell";
 import { DivisorH, IconoImg, Precio, Relleno, productosDe } from "./helpers";
@@ -35,14 +35,14 @@ export default function PantallaTamanosPostres({ datos }: { datos: DatosPantalla
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: pxH(44) }}>
           {/* Columna izquierda: Vasos */}
           <div style={{ display: "grid", gap: pxH(16) }}>
-            <div style={{ fontSize: pxH(23), fontWeight: 400 }}>Vasos</div>
+            <div style={{ fontSize: pxHT(23), fontWeight: 400 }}>Vasos</div>
             {vasos.map((p, i) => (
               <Fragment key={p.id}>
                 {/* Divisor entre los vasos (GRANDE/MEDIANO/CHICO) y CUCURUCHO/MILKSHAKE */}
                 {i === 3 ? <DivisorH style={{ margin: `${pxH(7)} 0` }} /> : null}
                 <div style={{ display: "flex", alignItems: "center", opacity: p.en_stock ? 1 : 0.5 }}>
                   {p.imagen_url ? <IconoImg src={p.imagen_url} sizePx={52} style={{ marginRight: pxH(8) }} /> : null}
-                  <span style={{ fontSize: pxH(23), fontWeight: 700, textTransform: "uppercase", textDecoration: p.en_stock ? undefined : "line-through" }}>{p.nombre}</span>
+                  <span style={{ fontSize: pxHT(23), fontWeight: 700, textTransform: "uppercase", textDecoration: p.en_stock ? undefined : "line-through" }}>{p.nombre}</span>
                   <Relleno />
                   <Precio precio={p.precio} enStock={p.en_stock} fontPx={24} />
                 </div>
@@ -61,12 +61,12 @@ export default function PantallaTamanosPostres({ datos }: { datos: DatosPantalla
               ))}
             </div>
             <DivisorH style={{ margin: `${pxH(4)} 0` }} />
-            <div style={{ fontSize: pxH(23), fontWeight: 400 }}>Kilos Especiales</div>
+            <div style={{ fontSize: pxHT(23), fontWeight: 400 }}>Kilos Especiales</div>
             {/* minHeight = alto del ícono de vasos (52) para que el paso vertical
                 de estas filas coincida con CUCURUCHO/MILKSHAKE de la izquierda */}
             {kilosEsp.map((p) => (
               <div key={p.id} style={{ display: "flex", alignItems: "center", minHeight: pxH(52), opacity: p.en_stock ? 1 : 0.5 }}>
-                <span style={{ fontSize: pxH(23), fontWeight: 700, textTransform: "uppercase" }}>{p.nombre}</span>
+                <span style={{ fontSize: pxHT(23), fontWeight: 700, textTransform: "uppercase" }}>{p.nombre}</span>
                 <Relleno />
                 <Precio precio={p.precio} enStock={p.en_stock} fontPx={24} />
               </div>
@@ -85,8 +85,8 @@ export default function PantallaTamanosPostres({ datos }: { datos: DatosPantalla
                   (derecha). En la izquierda se renderiza igual pero oculto, para que
                   las filas de postres queden alineadas verticalmente entre columnas. */}
               <div style={{ display: "grid", gridAutoFlow: "column", justifyContent: "end", gap: pxH(8), visibility: i === 1 ? "visible" : "hidden" }}>
-                <span style={{ width: pxH(90), textAlign: "right", fontSize: pxH(21), textDecoration: "underline", textDecorationColor: COLORS.violeta, textDecorationThickness: "1px", textUnderlineOffset: pxH(5) }}>Chico</span>
-                <span style={{ width: pxH(90), textAlign: "right", fontSize: pxH(21), textDecoration: "underline", textDecorationColor: COLORS.violeta, textDecorationThickness: "1px", textUnderlineOffset: pxH(5) }}>Grande</span>
+                <span style={{ width: pxHT(90), textAlign: "right", fontSize: pxHT(21), textDecoration: "underline", textDecorationColor: COLORS.violeta, textDecorationThickness: "1px", textUnderlineOffset: pxH(5) }}>Chico</span>
+                <span style={{ width: pxHT(90), textAlign: "right", fontSize: pxHT(21), textDecoration: "underline", textDecorationColor: COLORS.violeta, textDecorationThickness: "1px", textUnderlineOffset: pxH(5) }}>Grande</span>
               </div>
               {col.map((p) => (
                 <PostreRow key={p.id} p={p} dosPrecios={i === 1} />
@@ -102,19 +102,19 @@ export default function PantallaTamanosPostres({ datos }: { datos: DatosPantalla
 function PostreRow({ p, dosPrecios }: { p: Producto; dosPrecios: boolean }) {
   return (
     <div style={{ display: "flex", alignItems: "flex-end", opacity: p.en_stock ? 1 : 0.5 }}>
-      <span style={{ fontSize: pxH(24), fontWeight: 700, textDecoration: p.en_stock ? undefined : "line-through" }}>{p.nombre}</span>
+      <span style={{ fontSize: pxHT(24), fontWeight: 700, textDecoration: p.en_stock ? undefined : "line-through" }}>{p.nombre}</span>
       <Relleno />
       {dosPrecios ? (
         <>
-          <span style={{ width: pxH(90), textAlign: "right" }}>
+          <span style={{ width: pxHT(90), textAlign: "right" }}>
             <Precio precio={p.precio} enStock={p.en_stock} fontPx={24} />
           </span>
-          <span style={{ width: pxH(90), textAlign: "right", marginLeft: pxH(8) }}>
+          <span style={{ width: pxHT(90), textAlign: "right", marginLeft: pxH(8) }}>
             <Precio precio={p.precio_alt} enStock={p.en_stock} fontPx={24} />
           </span>
         </>
       ) : (
-        <span style={{ width: pxH(188), textAlign: "right" }}>
+        <span style={{ width: pxHT(188), textAlign: "right" }}>
           <Precio precio={p.precio} enStock={p.en_stock} fontPx={24} />
         </span>
       )}

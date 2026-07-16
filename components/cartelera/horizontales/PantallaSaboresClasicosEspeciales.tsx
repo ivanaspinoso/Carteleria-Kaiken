@@ -1,5 +1,5 @@
 import type { DatosPantalla } from "@/lib/types";
-import { COLORS, pxH } from "@/lib/cartelera/tokens";
+import { COLORS, pxH, pxHT } from "@/lib/cartelera/tokens";
 import TituloConLineas from "../TituloConLineas";
 import HShell from "./HShell";
 import { IconoImg, productosDe } from "./helpers";
@@ -23,7 +23,7 @@ export default function PantallaSaboresClasicosEspeciales({ datos }: { datos: Da
         <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: pxH(28) }}>
           {clasicas.map((cat) => (
             <div key={cat.id} style={{ display: "grid", gap: pxH(12), textAlign: "left" }}>
-              <div style={{ fontSize: pxH(30), fontWeight: 700, textTransform: "uppercase" }}>
+              <div style={{ fontSize: pxHT(30), fontWeight: 700, textTransform: "uppercase" }}>
                 {cat.nombre}
               </div>
               <div style={{ display: "grid", gap: pxH(6) }}>
@@ -31,7 +31,7 @@ export default function PantallaSaboresClasicosEspeciales({ datos }: { datos: Da
                   <div
                     key={p.id}
                     style={{
-                      fontSize: pxH(21),
+                      fontSize: pxHT(21),
                       fontWeight: 400,
                       opacity: p.en_stock ? 1 : 0.5,
                       // Sin stock: tachado para que se note de un vistazo
@@ -56,9 +56,9 @@ export default function PantallaSaboresClasicosEspeciales({ datos }: { datos: Da
               {/* TODO: los potecitos reales tienen fondo negro — recortar transparencia */}
               {p.imagen_url ? <IconoImg src={p.imagen_url} sizePx={96} /> : null}
               <div style={{ display: "grid", gap: pxH(4), textAlign: "left" }}>
-                <div style={{ fontSize: pxH(24), fontWeight: 700, textDecoration: p.en_stock ? undefined : "line-through" }}>{p.nombre}</div>
+                <div style={{ fontSize: pxHT(24), fontWeight: 700, textDecoration: p.en_stock ? undefined : "line-through" }}>{p.nombre}</div>
                 {p.descripcion ? (
-                  <div style={{ fontSize: pxH(17), fontWeight: 400, color: COLORS.violeta, opacity: 0.7, lineHeight: 1.25 }}>
+                  <div style={{ fontSize: pxHT(17), fontWeight: 400, color: COLORS.violeta, opacity: 0.7, lineHeight: 1.25 }}>
                     {p.descripcion}
                   </div>
                 ) : null}
