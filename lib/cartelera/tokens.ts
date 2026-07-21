@@ -85,6 +85,35 @@ export function pxHT(designPx: number): string {
   return `calc(var(--escala-texto, 1) * ${(designPx / BASE_HORIZONTAL_WIDTH) * 100}vw)`;
 }
 
+/**
+ * Escala del AIRE vertical (separación entre filas y entre secciones).
+ *
+ * Segunda pasada de HShell, después de la del texto: una pantalla con pocos
+ * productos llega al techo de `--escala-texto` y todavía le sobra alto (le pasa
+ * a la de cafetería/pastelería, que quedaba con un hueco muerto abajo y las
+ * filas apretadas contra la letra ya agrandada). En vez de dejar ese sobrante
+ * al final, se reparte entre los espacios.
+ *
+ * Se separa del texto en vez de escalar todo junto porque la prioridad es
+ * distinta: primero la letra lo más grande que entre (se lee de lejos), y solo
+ * lo que sobre va al aire. Si fuera una sola escala, el aire competiría con la
+ * letra y las pantallas densas (sabores) perderían tamaño de fuente.
+ *
+ * - MIN: espaciado de diseño; en las pantallas llenas no sobra nada y queda acá.
+ * - MAX: techo, para que 4 productos no queden flotando separadísimos.
+ */
+export const ESCALA_AIRE_MIN = 1;
+export const ESCALA_AIRE_MAX = 2.5;
+
+/**
+ * Igual que `pxH` pero afectado por `--escala-aire`. Solo para separaciones
+ * VERTICALES (gap entre filas, entre secciones, padding vertical). En
+ * horizontales no: a lo ancho no sobra espacio y estirarlo rompe la alineación.
+ */
+export function pxHA(designPx: number): string {
+  return `calc(var(--escala-aire, 1) * ${(designPx / BASE_HORIZONTAL_WIDTH) * 100}vw)`;
+}
+
 // Tokens compartidos por las pantallas horizontales (Cambio 6).
 export const TYPOGRAPHY_HORIZONTAL = {
   papelFondo: COLORS.cremaHorizontal, // #fffff9

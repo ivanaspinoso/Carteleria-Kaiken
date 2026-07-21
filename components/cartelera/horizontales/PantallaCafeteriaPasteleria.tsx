@@ -1,5 +1,5 @@
 import type { DatosPantalla, Producto } from "@/lib/types";
-import { COLORS, pxH, pxHT } from "@/lib/cartelera/tokens";
+import { COLORS, pxH, pxHA, pxHT } from "@/lib/cartelera/tokens";
 import TituloConLineas from "../TituloConLineas";
 import HShell from "./HShell";
 import { Precio, Relleno, productosDe } from "./helpers";
@@ -22,11 +22,11 @@ export default function PantallaCafeteriaPasteleria({ datos }: { datos: DatosPan
   return (
     <HShell justify="flex-start">
       {/* ===== Cafetería ===== */}
-      <section style={{ display: "grid", gap: pxH(44) }}>
+      <section style={{ display: "grid", gap: pxHA(44) }}>
         <TituloConLineas textoBold="CAFETERÍA" textoLight="" sizePx={48} bleedX={72} />
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: pxH(80) }}>
           {dosColumnas(cafeteria).map((col, i) => (
-            <div key={i} style={{ position: "relative", display: "grid", gap: pxH(42) }}>
+            <div key={i} style={{ position: "relative", display: "grid", gap: pxHA(42) }}>
               {col.map((p) => (
                 <div key={p.id} style={{ display: "flex", alignItems: "flex-end", opacity: p.en_stock ? 1 : 0.5 }}>
                   <span style={{ fontSize: pxHT(24), fontWeight: 700, textDecoration: p.en_stock ? undefined : "line-through" }}>{p.nombre}</span>
@@ -70,11 +70,11 @@ export default function PantallaCafeteriaPasteleria({ datos }: { datos: DatosPan
       </section>
 
       {/* ===== Pastelería ===== */}
-      <section style={{ display: "grid", gap: pxH(44) }}>
+      <section style={{ display: "grid", gap: pxHA(44) }}>
         <TituloConLineas textoBold="PASTELERÍA" textoLight="" sizePx={48} bleedX={72} />
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: pxH(80) }}>
           {dosColumnas(pasteleria).map((col, i) => (
-            <div key={i} style={{ display: "grid", gap: pxH(42) }}>
+            <div key={i} style={{ display: "grid", gap: pxHA(42) }}>
               {col.map((p) => (
                 <div key={p.id} style={{ display: "flex", alignItems: "flex-end", opacity: p.en_stock ? 1 : 0.5 }}>
                   <span style={{ fontSize: pxHT(24), fontWeight: 700, textDecoration: p.en_stock ? undefined : "line-through" }}>{p.nombre}</span>

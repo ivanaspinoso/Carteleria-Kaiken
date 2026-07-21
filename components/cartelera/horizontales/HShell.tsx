@@ -11,11 +11,14 @@ import {
 import {
   BASE_HORIZONTAL_WIDTH,
   COLORS,
+  ESCALA_AIRE_MAX,
+  ESCALA_AIRE_MIN,
   ESCALA_TEXTO_MAX,
   ESCALA_TEXTO_MIN,
   FONT_FAMILY,
   MARGEN_SEGURIDAD_PX,
   pxH,
+  pxHA,
 } from "@/lib/cartelera/tokens";
 
 // useLayoutEffect avisa en SSR; del lado servidor usamos useEffect.
@@ -48,18 +51,20 @@ export default function HShell({
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const [escala, setEscala] = useState(ESCALA_TEXTO_MIN);
+  const [aire, setAire] = useState(ESCALA_AIRE_MIN);
 
   useIsoLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
 
-    // `true` si el contenido entra en el alto útil con la escala `e`.
-    // Se exige un colchón (MARGEN_SEGURIDAD_PX): la búsqueda converge al borde
-    // exacto, y Montserrat no rasteriza igual en el TV (Tizen) que en Chrome.
-    // Un par de píxeles de diferencia contra un `overflow: hidden` = fila
-    // recortada. El colchón se define sobre el lienzo de diseño y se escala.
-    const entra = (e: number) => {
+    // `true` si el contenido entra en el alto útil con esa escala de texto y de
+    // aire. Se exige un colchón (MARGEN_SEGURIDAD_PX): la búsqueda converge al
+    // borde exacto, y Montserrat no rasteriza igual en el TV (Tizen) que en
+    // Chrome. Un par de píxeles de diferencia contra un `overflow: hidden` =
+    // fila recortada. El colchón se define sobre el lienzo de diseño y se escala.
+    const entra = (e: number, a: number) => {
       el.style.setProperty("--escala-texto", String(e));
+      el.style.setProperty("--escala-aire", String(a));
       const cs = getComputedStyle(el);
       const disponible =
         el.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
@@ -70,27 +75,43 @@ export default function HShell({
       return alto <= disponible - colchon;
     };
 
-    const ajustar = () => {
-      if (el.clientHeight === 0) return;
-      // Si entra al máximo, listo (no hace falta buscar).
-      if (entra(ESCALA_TEXTO_MAX)) {
-        setEscala(ESCALA_TEXTO_MAX);
-        return;
-      }
-      // Si no, búsqueda binaria del mayor tamaño que entra.
-      let lo = ESCALA_TEXTO_MIN;
-      let hi = ESCALA_TEXTO_MAX;
-      let best = ESCALA_TEXTO_MIN;
+    // Mayor valor entre `min` y `max` que pasa `cabe`. Asume que `cabe` es
+    // monótona (más escala nunca ocupa menos alto), que es el caso acá.
+    const maximizar = (cabe: (v: number) => boolean, min: number, max: number) => {
+      if (cabe(max)) return max;
+      let lo = min;
+      let hi = max;
+      let best = min;
       for (let i = 0; i < 14; i++) {
         const mid = (lo + hi) / 2;
-        if (entra(mid)) {
+        if (cabe(mid)) {
           best = mid;
           lo = mid;
         } else {
           hi = mid;
         }
       }
-      setEscala(best);
+      return best;
+    };
+
+    const ajustar = () => {
+      if (el.clientHeight === 0) return;
+
+      // 1) Texto lo más grande que entre, con el aire en su mínimo. La
+      //    legibilidad manda: el aire no le puede robar tamaño a la letra.
+      const texto = maximizar((t) => entra(t, ESCALA_AIRE_MIN), ESCALA_TEXTO_MIN, ESCALA_TEXTO_MAX);
+      // 2) El alto que sobre (pasa cuando la pantalla topa en ESCALA_TEXTO_MAX
+      //    y todavía le queda lugar) se reparte entre los espacios, en vez de
+      //    quedar como un hueco muerto al final con las filas apretadas.
+      const nuevoAire = maximizar((a) => entra(texto, a), ESCALA_AIRE_MIN, ESCALA_AIRE_MAX);
+
+      // La búsqueda deja escritos en el style inline los valores de la última
+      // prueba, que puede ser una que NO entraba. Si el state no cambia, React
+      // no vuelve a pintar y esos valores quedarían aplicados: se reescriben acá.
+      el.style.setProperty("--escala-texto", String(texto));
+      el.style.setProperty("--escala-aire", String(nuevoAire));
+      setEscala(texto);
+      setAire(nuevoAire);
     };
 
     ajustar();
@@ -134,6 +155,7 @@ export default function HShell({
         // Escala de lectura del cuerpo de texto. Arranca en el mínimo y el
         // efecto la sube a lo que entre, antes del primer pintado.
         ["--escala-texto" as string]: String(escala),
+        ["--escala-aire" as string]: String(aire),
         aspectRatio: "16 / 9",
         width: "100%",
         height: "100%",
@@ -147,9 +169,10 @@ export default function HShell({
         alignContent: justify,
         // Padding vertical y separación entre secciones recortados (48→28,
         // 72→44): es alto que se le devuelve al texto para que pueda crecer.
-        // El padding lateral (72) no se toca: ahí sobra espacio.
-        padding: `${pxH(28)} ${pxH(72)}`,
-        gap: pxH(44),
+        // Van con pxHA: si después de agrandar el texto sobra alto, vuelven a
+        // abrirse. El padding lateral (72) es fijo: a lo ancho no sobra nada.
+        padding: `${pxHA(28)} ${pxH(72)}`,
+        gap: pxHA(44),
         boxSizing: "border-box",
         overflow: "hidden",
         ...style,
