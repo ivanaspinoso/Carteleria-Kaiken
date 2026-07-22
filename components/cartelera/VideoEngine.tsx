@@ -108,28 +108,40 @@ export default function VideoEngine({
     const primeraVez = srcRef.current === null;
     srcRef.current = src;
 
-    // Imagen (placa personalizada tipo imagen): pintar en el cover y pausar el
-    // video (libera el decoder mientras se ve una imagen).
+    let cancel = false;
+    const timers: ReturnType<typeof setTimeout>[] = [];
+
+    // Imagen (placa personalizada tipo imagen): pintar en el cover, ocultar el
+    // video (opacity 0) y pausarlo (libera el decoder).
     if (tipo === "imagen") {
       cover.src = src;
       cover.style.opacity = "1";
+      video.style.opacity = "0";
       try {
         video.pause();
       } catch {
         /* noop */
       }
       onReadyRef.current?.();
-      return;
+      return () => {
+        cancel = true;
+        timers.forEach(clearTimeout);
+      };
     }
 
-    // Video: tapar con el PÓSTER (contenido, nunca negro). En una transición el
-    // cover hace crossfade desde la placa anterior (video vivo debajo); en el
-    // arranque aparece directo.
+    // ARQUITECTURA anti-negro: el PÓSTER (cover) es un BACKSTOP que queda DEBAJO
+    // del <video> (z-index). El <video> se funde por ENCIMA: el viejo se va
+    // (opacity → 0) y el nuevo entra (opacity → 1). Mientras el plano del video
+    // está en negro (al recargar el src), el <video> está en opacity 0, así que
+    // lo que se ve es el póster — NUNCA el negro del plano. El póster se oculta
+    // recién cuando el video nuevo ya lo tapa (opaco).
     if (poster) cover.src = poster;
     cover.style.opacity = poster ? "1" : "0";
 
-    let cancel = false;
-    const timers: ReturnType<typeof setTimeout>[] = [];
+    // Fundir el video ACTUAL (viejo) hacia afuera → debajo aparece el póster.
+    // (En el primer arranque sin póster, dejar el video visible: no hay backstop
+    // ni video viejo, así que ocultarlo solo daría negro hasta que cargue.)
+    if (!primeraVez || poster) video.style.opacity = "0";
 
     const cargar = () => {
       if (cancel) return;
@@ -142,12 +154,8 @@ export default function VideoEngine({
       const revelar = () => {
         if (listo || cancel) return;
         listo = true;
-        // Poner el video en 0 y REPRODUCIR ya (detrás del póster, que sigue
-        // tapando). Un video reproduciéndose empuja frames al plano de hardware;
-        // así, cuando saquemos el póster, hay imagen viva garantizada — nunca un
-        // plano negro. (Antes se fundía con el video PAUSADO en 0, y en varios TV
-        // el frame pausado no llegaba a componerse en el plano → parpadeo negro
-        // en las transiciones entre placas distintas.)
+        // Arrancar desde 0 y REPRODUCIR (el video empuja frames al plano). El
+        // video sigue en opacity 0, tapado por el póster.
         try {
           video.currentTime = 0;
         } catch {
@@ -156,35 +164,39 @@ export default function VideoEngine({
         const p = video.play();
         if (p && typeof p.catch === "function") p.catch(() => {});
 
-        // Sacar el póster recién cuando el video está PINTANDO: 'timeupdate'
-        // (avanzó el tiempo = hay frames saliendo al plano). El video sólo se
-        // movió unos frames desde 0, así que el cruce póster→video es invisible.
+        // Cuando el video está PINTANDO ('timeupdate' = avanzó el tiempo = hay
+        // frames en el plano), subirlo por opacidad SOBRE el póster. Como el
+        // video sólo se movió unos frames desde 0, el cruce póster→video es
+        // invisible. Al terminar el fundido, ocultar el póster backstop.
         let fundido = false;
         const fundir = () => {
           if (fundido || cancel) return;
           fundido = true;
           video.removeEventListener("timeupdate", fundir);
-          cover.style.opacity = "0";
+          video.style.opacity = "1";
           onReadyRef.current?.();
+          timers.push(
+            setTimeout(() => {
+              if (!cancel) cover.style.opacity = "0";
+            }, CROSSFADE_MS + 40)
+          );
         };
         video.addEventListener("timeupdate", fundir);
         // Fallback: si no llega 'timeupdate', fundir igual tras un margen corto.
-        timers.push(setTimeout(fundir, 250));
+        timers.push(setTimeout(fundir, 300));
       };
       video.addEventListener("canplay", revelar, { once: true });
       video.addEventListener("loadeddata", revelar, { once: true });
       timers.push(setTimeout(revelar, 1500)); // por si no llegan eventos
     };
 
-    // Con póster y NO en el arranque: recargar el <video> (que pone negro el
-    // plano) recién cuando el póster está PINTADO tapándolo. El src del cover
-    // suele venir solo pre-cargado por HTTP (no decodificado); en TVs lentos
-    // decodificar tarda > CROSSFADE_MS, y si recargábamos a los 160ms fijos el
-    // plano se ponía negro ANTES de que el cover lo tapara → parpadeo negro.
-    // Gateamos por el load/decode real del cover. Sin póster, cargar ya.
+    // Recargar el <video> (que blanquea el plano) recién cuando (a) el póster
+    // está PINTADO (backstop listo) y (b) el video viejo terminó de fundirse a 0
+    // (~CROSSFADE_MS). Así el blanqueo ocurre con el video ya invisible y el
+    // póster tapando. Sin póster / primer arranque: cargar ya.
     if (poster && !primeraVez) {
       const dispararCargar = () => {
-        if (!cancel) timers.push(setTimeout(cargar, CROSSFADE_MS)); // ≈ crossfade del cover
+        if (!cancel) timers.push(setTimeout(cargar, CROSSFADE_MS));
       };
       if (cover.complete && cover.naturalWidth > 0) {
         dispararCargar();
@@ -236,17 +248,29 @@ export default function VideoEngine({
       {/* Wrapper que rota el medio (solo personalizadas verticales). Video +
           cover van DENTRO, así giran juntos sin desfasarse. */}
       <div style={rotadorStyle}>
-        {/* Sin autoPlay: el play lo controla el effect (recién cuando el cover se
-            desvaneció) para que la animación de entrada arranque desde 0 y suave. */}
-        <video ref={videoRef} muted loop playsInline preload="auto" style={mediaStyle} />
-        {/* Cover de contenido (póster / imagen). Renderiza SOBRE el plano de
-            video del TV, así tapa el hueco de carga con el frame, no negro. */}
+        {/* Video ARRIBA (z-index 2). Su opacidad la controla el effect: se funde
+            a 0 mientras el plano se blanquea (recarga) y vuelve a 1 cuando el
+            video nuevo ya está pintando. Sin autoPlay: el play lo maneja el
+            effect para arrancar la animación desde 0. */}
+        <video
+          ref={videoRef}
+          muted loop playsInline preload="auto"
+          style={{
+            ...mediaStyle,
+            zIndex: 2,
+            opacity: 1,
+            transition: `opacity ${CROSSFADE_MS}ms ease-out`,
+          }}
+        />
+        {/* Póster BACKSTOP, DEBAJO del video (z-index 1). Queda visible mientras
+            el video está en opacity 0, tapando el negro del plano de carga. */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           ref={coverRef}
           alt=""
           style={{
             ...mediaStyle,
+            zIndex: 1,
             opacity: 0,
             transition: `opacity ${CROSSFADE_MS}ms ease-out`,
             pointerEvents: "none",
