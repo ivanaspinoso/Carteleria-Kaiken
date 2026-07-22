@@ -10,11 +10,35 @@ export default function SwRegistration() {
       // Producción: PWA con auto-actualización. Como las carteleras son TVs
       // que nunca cierran la pestaña, hay que forzar que tomen la versión
       // nueva tras cada deploy sin intervención manual.
+      //
+      // ANTI-LOOP: recargar en cada `controllerchange` sin límite genera un bucle
+      // de recargas. Durante la propagación de un deploy en Vercel, los edges de
+      // la CDN sirven `sw.js` inconsistente por unos minutos; cada `reg.update()`
+      // (que corre en cada carga) ve un SW "distinto" → instala → controllerchange
+      // → reload → y otra vez, cada pocos segundos. El guard por-carga no sirve
+      // porque la recarga lo resetea. Capamos por TIEMPO en localStorage (persiste
+      // entre recargas): como mucho UNA recarga cada 10 min. Rompe el bucle y deja
+      // que la CDN se estabilice; los updates legítimos igual entran (espaciados).
+      const CLAVE_TS = "sw-ultima-recarga";
+      const MIN_ENTRE_RECARGAS_MS = 10 * 60 * 1000;
+      // Sin controller previo = primera instalación (no un update): no recargar,
+      // la página ya está corriendo el código nuevo.
+      const habiaControlador = !!navigator.serviceWorker.controller;
       let recargando = false;
       navigator.serviceWorker.addEventListener("controllerchange", () => {
-        // Cuando el SW nuevo toma control, recargar una sola vez para cargar
-        // los assets nuevos (evita quedar pegado a una versión vieja).
-        if (recargando) return;
+        if (recargando || !habiaControlador) return;
+        let ultima = 0;
+        try {
+          ultima = Number(localStorage.getItem(CLAVE_TS) || 0);
+        } catch {
+          /* localStorage podría fallar en algún TV: seguir igual */
+        }
+        if (Date.now() - ultima < MIN_ENTRE_RECARGAS_MS) return; // recargó recién
+        try {
+          localStorage.setItem(CLAVE_TS, String(Date.now()));
+        } catch {
+          /* noop */
+        }
         recargando = true;
         window.location.reload();
       });
