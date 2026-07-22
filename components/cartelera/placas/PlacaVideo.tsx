@@ -255,7 +255,25 @@ export function AutoFitTexto({
     ajustar();
     const ro = new ResizeObserver(ajustar);
     ro.observe(box);
-    return () => ro.disconnect();
+
+    // Re-medir cuando las fuentes terminen de cargar. En las Smart TV, Montserrat
+    // suele no estar lista en el primer layout → se mide con la fuente fallback
+    // (más ancha) y la búsqueda binaria elige un tamaño más CHICO. El
+    // ResizeObserver no dispara por el font-swap (la caja no cambia de tamaño),
+    // así que sin esto el texto quedaba achicado en el TV. En la compu la fuente
+    // ya está cacheada y este re-ajuste no cambia nada.
+    let cancelado = false;
+    const fonts = (document as Document & { fonts?: FontFaceSet }).fonts;
+    if (fonts?.ready) {
+      fonts.ready.then(() => {
+        if (!cancelado) ajustar();
+      });
+    }
+
+    return () => {
+      cancelado = true;
+      ro.disconnect();
+    };
   }, [children, boxWidthPct, boxHeightPct, maxFontPx, minFontPx, wrap]);
 
   return (
