@@ -139,49 +139,37 @@ export default function VideoEngine({
       video.load();
 
       let listo = false;
-      // Desvanece el cover revelando el video, avisa (onReady) y arranca el play.
-      // Se llama recién cuando el frame 0 está PINTADO en el plano, nunca antes
-      // (si no, el cover se iría sobre un plano todavía en negro → parpadeo).
-      const fundir = () => {
-        if (cancel) return;
-        cover.style.opacity = "0";
-        onReadyRef.current?.();
-        timers.push(
-          setTimeout(() => {
-            if (cancel) return;
-            const p = video.play();
-            if (p && typeof p.catch === "function") p.catch(() => {});
-          }, CROSSFADE_MS)
-        );
-      };
       const revelar = () => {
         if (listo || cancel) return;
         listo = true;
-        // Posicionar en el frame 0 (= el póster) y NO reproducir todavía: así el
-        // cover se desvanece sobre un cuadro idéntico (cruce invisible) y la
-        // animación de entrada arranca recién DESPUÉS, completa y desde 0.
+        // Poner el video en 0 y REPRODUCIR ya (detrás del póster, que sigue
+        // tapando). Un video reproduciéndose empuja frames al plano de hardware;
+        // así, cuando saquemos el póster, hay imagen viva garantizada — nunca un
+        // plano negro. (Antes se fundía con el video PAUSADO en 0, y en varios TV
+        // el frame pausado no llegaba a componerse en el plano → parpadeo negro
+        // en las transiciones entre placas distintas.)
         try {
-          video.pause();
-          // Esperar el 'seeked' = frame 0 realmente decodificado y pintado en el
-          // plano, antes de fundir. En TVs lentos, 2 rAF no alcanzaban: el cover
-          // se iba con el plano todavía en negro → se veía el parpadeo.
-          const alSeek = () => {
-            video.removeEventListener("seeked", alSeek);
-            if (!cancel) fundir();
-          };
-          video.addEventListener("seeked", alSeek);
-          // Fallback: algunos TV no emiten 'seeked' si ya estaba en 0.
-          timers.push(
-            setTimeout(() => {
-              video.removeEventListener("seeked", alSeek);
-              fundir();
-            }, 250)
-          );
           video.currentTime = 0;
         } catch {
-          // El metadata podría no haber cargado: fundir tras un par de frames.
-          requestAnimationFrame(() => requestAnimationFrame(fundir));
+          /* el metadata podría no haber cargado todavía */
         }
+        const p = video.play();
+        if (p && typeof p.catch === "function") p.catch(() => {});
+
+        // Sacar el póster recién cuando el video está PINTANDO: 'timeupdate'
+        // (avanzó el tiempo = hay frames saliendo al plano). El video sólo se
+        // movió unos frames desde 0, así que el cruce póster→video es invisible.
+        let fundido = false;
+        const fundir = () => {
+          if (fundido || cancel) return;
+          fundido = true;
+          video.removeEventListener("timeupdate", fundir);
+          cover.style.opacity = "0";
+          onReadyRef.current?.();
+        };
+        video.addEventListener("timeupdate", fundir);
+        // Fallback: si no llega 'timeupdate', fundir igual tras un margen corto.
+        timers.push(setTimeout(fundir, 250));
       };
       video.addEventListener("canplay", revelar, { once: true });
       video.addEventListener("loadeddata", revelar, { once: true });
