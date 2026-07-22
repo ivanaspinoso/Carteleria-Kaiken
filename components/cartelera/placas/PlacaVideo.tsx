@@ -252,29 +252,37 @@ export function AutoFitTexto({
       setFontPx(best);
     };
 
+    let cancelado = false;
+    const reajustar = () => { if (!cancelado) ajustar(); };
+
     ajustar();
     const ro = new ResizeObserver(ajustar);
     ro.observe(box);
 
-    // Re-medir cuando las fuentes terminen de cargar. En las Smart TV, Montserrat
-    // suele no estar lista en el primer layout → se mide con la fuente fallback
-    // (más ancha) y la búsqueda binaria elige un tamaño más CHICO. El
-    // ResizeObserver no dispara por el font-swap (la caja no cambia de tamaño),
-    // así que sin esto el texto quedaba achicado en el TV. En la compu la fuente
-    // ya está cacheada y este re-ajuste no cambia nada.
-    let cancelado = false;
+    // Re-medir cuando la fuente esté lista. En las Smart TV, Montserrat suele no
+    // estar cargada en el primer layout → se mide con la fuente fallback (más
+    // ancha) y la búsqueda binaria elige un tamaño más CHICO. El ResizeObserver
+    // no dispara por el font-swap (la caja no cambia de tamaño), así que sin esto
+    // el texto quedaba achicado en el TV (se notaba en la promo especial). En la
+    // compu la fuente ya está cacheada y estos re-ajustes no cambian nada.
     const fonts = (document as Document & { fonts?: FontFaceSet }).fonts;
-    if (fonts?.ready) {
-      fonts.ready.then(() => {
-        if (!cancelado) ajustar();
-      });
+    if (fonts) {
+      // ready = todas las fuentes; load() = fuerza y espera Montserrat puntual.
+      fonts.ready?.then(reajustar);
+      try {
+        fonts.load(`${weight} 16px Montserrat`).then(reajustar).catch(() => {});
+      } catch { /* algún TV podría no soportar fonts.load */ }
     }
+    // Red de seguridad: re-medir a varios tiempos por si el layout (rotación,
+    // escala) o la fuente asientan tarde y no disparan ni RO ni fonts.
+    const reintentos = [120, 400, 1000, 2000].map((ms) => setTimeout(reajustar, ms));
 
     return () => {
       cancelado = true;
       ro.disconnect();
+      reintentos.forEach(clearTimeout);
     };
-  }, [children, boxWidthPct, boxHeightPct, maxFontPx, minFontPx, wrap]);
+  }, [children, boxWidthPct, boxHeightPct, maxFontPx, minFontPx, wrap, weight]);
 
   return (
     <div
