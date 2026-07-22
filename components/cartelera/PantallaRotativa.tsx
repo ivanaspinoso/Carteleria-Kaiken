@@ -150,10 +150,17 @@ export default function PantallaRotativa({ datos, videoLayer, rotacion = 0, vp }
   const proxSrc = prox ? srcDe(prox) : "";
   const proxPoster = prox ? posterDe(prox) : undefined;
   useEffect(() => {
-    const urls = [proxSrc, proxPoster].filter(Boolean) as string[];
-    if (urls.length === 0) return;
     const c = new AbortController();
-    urls.forEach((u) => fetch(u, { signal: c.signal }).catch(() => {}));
+    // Video: calentar solo el cache HTTP (no un 2º <video>, saturaría el decoder).
+    if (proxSrc) fetch(proxSrc, { signal: c.signal }).catch(() => {});
+    // Póster: además de bajarlo, DECODIFICARLO en background con un Image(). Así
+    // en la próxima transición el cover ya está pintado y tapa el hueco de carga
+    // del <video> al instante — sin el parpadeo negro que se veía en los TVs.
+    if (proxPoster) {
+      const img = new Image();
+      img.src = proxPoster;
+      if (typeof img.decode === "function") img.decode().catch(() => {});
+    }
     return () => c.abort();
   }, [proxSrc, proxPoster]);
 

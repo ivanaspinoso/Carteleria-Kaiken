@@ -139,6 +139,21 @@ export default function VideoEngine({
       video.load();
 
       let listo = false;
+      // Desvanece el cover revelando el video, avisa (onReady) y arranca el play
+      // al terminar el fundido. Se llama recién cuando el frame 0 está PINTADO en
+      // el plano de hardware, nunca antes (si no, se revela negro).
+      const fundir = () => {
+        if (cancel) return;
+        cover.style.opacity = "0";
+        onReadyRef.current?.();
+        timers.push(
+          setTimeout(() => {
+            if (cancel) return;
+            const p = video.play();
+            if (p && typeof p.catch === "function") p.catch(() => {});
+          }, CROSSFADE_MS)
+        );
+      };
       const revelar = () => {
         if (listo || cancel) return;
         listo = true;
@@ -149,26 +164,27 @@ export default function VideoEngine({
         // la animación → el resto de la placa aparecía "de golpe" (se veía bruto).
         try {
           video.pause();
+          // Esperar el 'seeked' (frame 0 realmente decodificado en el plano)
+          // antes de fundir. En TVs lentos, 2 rAF no alcanzaban: el cover se iba
+          // y el plano todavía estaba en negro → se veía apagar y "reempezar".
+          const alSeek = () => {
+            video.removeEventListener("seeked", alSeek);
+            if (!cancel) fundir();
+          };
+          video.addEventListener("seeked", alSeek);
+          // Fallback: algunos TV no emiten 'seeked' al fijar currentTime=0 si ya
+          // estaba en 0. No bloquear la transición por eso.
+          timers.push(
+            setTimeout(() => {
+              video.removeEventListener("seeked", alSeek);
+              fundir();
+            }, 250)
+          );
           video.currentTime = 0;
         } catch {
-          /* el metadata podría no haber cargado todavía */
+          // El metadata podría no haber cargado: fundir tras un par de frames.
+          requestAnimationFrame(() => requestAnimationFrame(fundir));
         }
-        // Un par de frames para que el <video> pinte el frame 0 y recién ahí
-        // desvanecer el cover; al terminar el fundido, arrancar la reproducción.
-        requestAnimationFrame(() =>
-          requestAnimationFrame(() => {
-            if (cancel) return;
-            cover.style.opacity = "0";
-            onReadyRef.current?.();
-            timers.push(
-              setTimeout(() => {
-                if (cancel) return;
-                const p = video.play();
-                if (p && typeof p.catch === "function") p.catch(() => {});
-              }, CROSSFADE_MS)
-            );
-          })
-        );
       };
       video.addEventListener("canplay", revelar, { once: true });
       video.addEventListener("loadeddata", revelar, { once: true });
@@ -180,7 +196,29 @@ export default function VideoEngine({
     // se pone negro al cargar) → el negro queda SIEMPRE detrás del cover. Sin
     // póster, cargar ya (caso degradado).
     if (poster && !primeraVez) {
-      timers.push(setTimeout(cargar, CROSSFADE_MS)); // ≈ duración del crossfade del cover
+      // Gatear por el póster PINTADO, no por un tiempo fijo: el src del cover
+      // suele venir solo pre-cargado por HTTP (no decodificado), y en TVs lentos
+      // decodificar tarda > CROSSFADE_MS. Si recargábamos el <video> a los 160ms
+      // el plano se ponía negro ANTES de que el cover lo tapara → parpadeo negro.
+      const dispararCargar = () => {
+        if (!cancel) timers.push(setTimeout(cargar, CROSSFADE_MS)); // ≈ crossfade del cover
+      };
+      if (cover.complete && cover.naturalWidth > 0) {
+        dispararCargar();
+      } else {
+        const alCargarCover = () => {
+          cover.removeEventListener("load", alCargarCover);
+          dispararCargar();
+        };
+        cover.addEventListener("load", alCargarCover, { once: true });
+        // Fallback: si el 'load' no llega, no bloquear la rotación para siempre.
+        timers.push(
+          setTimeout(() => {
+            cover.removeEventListener("load", alCargarCover);
+            dispararCargar();
+          }, 600)
+        );
+      }
     } else {
       cargar();
     }
