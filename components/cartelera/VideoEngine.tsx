@@ -4,35 +4,29 @@ import { useEffect, useRef, useState, type CSSProperties } from "react";
 
 export type MediaTipo = "video" | "imagen";
 
-// Duración del crossfade entre placas. Corto = ágil; largo = más suave.
-const CROSSFADE_MS = 320;
-
-// requestVideoFrameCallback: avisa cuando el <video> PRESENTÓ un frame en el
-// plano (Chromium 83+, o sea Tizen 7/8 de las verticales). Es la señal más
-// confiable de "ya hay imagen, no negro" — mejor que canplay/loadeddata, que
-// avisan que hay datos pero no que se pintó.
-type VideoRVFC = HTMLVideoElement & {
-  requestVideoFrameCallback?: (cb: (now: number) => void) => number;
-};
+// Duración del crossfade del cover (póster). Corto = transición ágil/dinámica.
+// El mismo valor se usa para esperar a que el cover tape antes de recargar el
+// <video> (así el negro de carga queda detrás del cover, nunca a la vista).
+const CROSSFADE_MS = 160;
 
 /**
- * Motor de medios para signage en Smart TV (Tizen 7/8 en las verticales).
+ * Motor de medios para signage en Smart TV (Tizen / WebOS / Android WebView).
  *
- * DOBLE BUFFER: dos <video> superpuestos. El que se VE nunca recarga su `.src`,
- * así su plano de hardware nunca se pone negro. El próximo medio se carga en el
- * <video> de ATRÁS (oculto, opacity 0); recién cuando ese video PINTÓ un frame
- * (requestVideoFrameCallback) se hace el crossfade por opacidad y se pausa el
- * anterior. Resultado: nunca se ve el negro de carga, y la transición es un
- * fundido limpio.
+ * Principios (por qué el sistema anterior fallaba en TVs):
+ *  - Antes había ~11 <video> montados a la vez → los decoders por HARDWARE de
+ *    los Smart TV soportan 1-2 streams → casi todos quedaban en negro.
+ *  - El playback dependía del render de React (montar/desmontar, autoplay).
  *
- * Por qué NO un solo <video> (diseño anterior): al cambiar el `.src` el plano de
- * video por HARDWARE del TV se pone negro mientras decodifica, y ese negro puede
- * pintarse POR ENCIMA del <img> de póster (overlay de hardware) → parpadeo negro
- * imposible de tapar. Con dos videos el plano visible nunca se recarga.
- *
- * Por qué DOS y no once (que saturaba el decoder): en régimen sólo reproduce uno;
- * el segundo está pausado y sólo decodifica durante el crossfade (~0.3s). Dos
- * streams simultáneos los Tizen 7/8 los manejan sin problema.
+ * Acá hay UN SOLO <video> PERSISTENTE: nunca se desmonta ni cambia de key; solo
+ * se cambia su `.src`. PROBLEMA: al recargar el src, el plano de video por
+ * HARDWARE del TV se pone NEGRO mientras decodifica, y NO se puede congelar el
+ * último frame en un <canvas> (el plano de hardware no es accesible por canvas:
+ * sale negro). SOLUCIÓN: un <img> "cover" con el PÓSTER (primer frame de la
+ * placa, una imagen estática que SÍ renderiza sobre el plano de video del TV)
+ * tapa el hueco de carga con el CONTENIDO de la placa — nunca negro. Como el
+ * póster es el frame 0 del video, cuando el <video> revela y arranca en 0 el
+ * cruce es invisible. El cover hace crossfade desde la placa anterior y, al
+ * revelarse el video nuevo, se desvanece hacia el vivo.
  */
 export default function VideoEngine({
   src,
@@ -45,30 +39,34 @@ export default function VideoEngine({
 }: {
   src: string;
   tipo: MediaTipo;
-  // Primer frame del medio (imagen estática). Se usa SOLO en el primer arranque
-  // (antes de que haya ningún video pintado) para no ver negro inicial. En las
-  // transiciones ya no hace falta: el video anterior tapa el hueco.
+  // Primer frame del medio (imagen estática) para tapar el hueco de carga del
+  // <video> sin que aparezca negro. Si falta, se carga directo (puede haber un
+  // parpadeo negro en ese caso — solo placas personalizadas sin póster).
   poster?: string;
-  // Rotación del MEDIO (no de la placa). Las fijas vienen horneadas (rotar=0);
-  // las personalizadas verticales se rotan acá 90°.
+  // Rotación del MEDIO (no de la placa). Las placas fijas vienen con la rotación
+  // HORNEADA en el archivo (rotar=0). Las personalizadas que sube el dueño son
+  // verticales 9:16 sin hornear → se rotan acá 90° para que se vean derechas en
+  // la pantalla montada vertical, igual que las fijas. Es un transform ÚNICO
+  // sobre la capa de video (que está FUERA del rotador), no anidado → el plano
+  // de hardware del TV lo compone bien (a diferencia del intento anidado viejo).
   rotar?: 0 | 90 | -90;
-  // Tamaño real del viewport (px), para rotar sin vw/vh (los Smart TV los
-  // calculan mal).
+  // Tamaño real del viewport (px), para rotar a pantalla completa sin vw/vh
+  // (los navegadores de Smart TV los calculan mal).
   vp?: { w: number; h: number };
-  // "cover" llena recortando (placas fijas 9:16); "contain" muestra completo
-  // (personalizadas de otra proporción).
+  // Cómo encaja el medio: "cover" llena la pantalla recortando lo que sobra
+  // (placas fijas, ya son 9:16); "contain" muestra el medio COMPLETO acomodado
+  // a su proporción (placas personalizadas: si no es 9:16 exacto, se ve entero
+  // con borde negro en vez de recortarse).
   ajuste?: "cover" | "contain";
-  // Se llama cuando el medio NUEVO ya está revelado (arrancó el crossfade).
-  // PantallaRotativa lo usa para recién entonces mostrar el texto.
+  // Se llama cuando el medio NUEVO ya está revelado (video pintando / imagen
+  // cargada). PantallaRotativa lo usa para recién entonces mostrar el texto.
   onReady?: () => void;
 }) {
-  // Dos <video> (doble buffer) + una <img> (póster inicial e imágenes).
-  const vidRefs = [useRef<HTMLVideoElement>(null), useRef<HTMLVideoElement>(null)];
-  const imgRef = useRef<HTMLImageElement>(null);
-  // Qué buffer está VISIBLE (0 o 1). El próximo video carga en el otro.
-  const frenteRef = useRef(0);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const coverRef = useRef<HTMLImageElement>(null);
   const srcRef = useRef<string | null>(null);
 
+  // Ref siempre fresca para no re-disparar el effect de carga al cambiar onReady.
   const onReadyRef = useRef(onReady);
   onReadyRef.current = onReady;
 
@@ -80,8 +78,9 @@ export default function VideoEngine({
     objectFit: ajuste,
   };
 
-  // Wrapper de rotación (solo personalizadas verticales). Replica el `.rotador-90`
-  // de pantalla con px reales + origen 0,0 + traslación.
+  // Wrapper de rotación del medio. Replica EXACTO el `.rotador-90` de pantalla
+  // (px reales + origen 0,0 + traslación) para que el medio vertical llene la
+  // pantalla apaisada girado, idéntico a las placas fijas horneadas.
   const rotando = rotar !== 0 && vp && vp.w > 0 && vp.h > 0;
   const giro =
     rotar === 90
@@ -102,160 +101,133 @@ export default function VideoEngine({
     : { position: "absolute", inset: 0 };
 
   useEffect(() => {
-    const frente = frenteRef.current;
-    const vFrente = vidRefs[frente].current;
-    const vAtras = vidRefs[1 - frente].current;
-    const img = imgRef.current;
-    if (!vFrente || !vAtras || !img || !src) return;
+    const video = videoRef.current;
+    const cover = coverRef.current;
+    if (!video || !cover || !src) return;
     if (src === srcRef.current) return; // sin cambios
     const primeraVez = srcRef.current === null;
     srcRef.current = src;
 
+    // Imagen (placa personalizada tipo imagen): pintar en el cover y pausar el
+    // video (libera el decoder mientras se ve una imagen).
+    if (tipo === "imagen") {
+      cover.src = src;
+      cover.style.opacity = "1";
+      try {
+        video.pause();
+      } catch {
+        /* noop */
+      }
+      onReadyRef.current?.();
+      return;
+    }
+
+    // Video: tapar con el PÓSTER (contenido, nunca negro). En una transición el
+    // cover hace crossfade desde la placa anterior (video vivo debajo); en el
+    // arranque aparece directo.
+    if (poster) cover.src = poster;
+    cover.style.opacity = poster ? "1" : "0";
+
     let cancel = false;
     const timers: ReturnType<typeof setTimeout>[] = [];
 
-    // ---- Placa tipo IMAGEN (personalizada) ----
-    if (tipo === "imagen") {
-      img.src = src;
-      img.style.opacity = "1";
-      // Fundir a la imagen y pausar ambos videos (libera el decoder).
-      vFrente.style.opacity = "0";
-      vAtras.style.opacity = "0";
-      timers.push(
-        setTimeout(() => {
-          if (cancel) return;
-          try { vFrente.pause(); } catch { /* noop */ }
-          try { vAtras.pause(); } catch { /* noop */ }
-        }, CROSSFADE_MS)
-      );
-      onReadyRef.current?.();
-      return () => {
-        cancel = true;
-        timers.forEach(clearTimeout);
+    const cargar = () => {
+      if (cancel) return;
+      video.muted = true;
+      video.setAttribute("muted", "");
+      video.src = src;
+      video.load();
+
+      let listo = false;
+      const revelar = () => {
+        if (listo || cancel) return;
+        listo = true;
+        // Posicionar en el frame 0 (= el póster) y NO reproducir todavía: así el
+        // cover se desvanece sobre un cuadro idéntico (cruce invisible) y la
+        // animación de entrada arranca recién DESPUÉS, completa y desde 0. Antes
+        // el video corría durante la carga y al revelarse ya estaba a mitad de
+        // la animación → el resto de la placa aparecía "de golpe" (se veía bruto).
+        try {
+          video.pause();
+          video.currentTime = 0;
+        } catch {
+          /* el metadata podría no haber cargado todavía */
+        }
+        // Un par de frames para que el <video> pinte el frame 0 y recién ahí
+        // desvanecer el cover; al terminar el fundido, arrancar la reproducción.
+        requestAnimationFrame(() =>
+          requestAnimationFrame(() => {
+            if (cancel) return;
+            cover.style.opacity = "0";
+            onReadyRef.current?.();
+            timers.push(
+              setTimeout(() => {
+                if (cancel) return;
+                const p = video.play();
+                if (p && typeof p.catch === "function") p.catch(() => {});
+              }, CROSSFADE_MS)
+            );
+          })
+        );
       };
-    }
-
-    // ---- Placa tipo VIDEO ----
-    // Cargar el próximo en el buffer de ATRÁS (oculto). El de adelante sigue
-    // reproduciéndose y visible → no hay negro.
-    vAtras.muted = true;
-    vAtras.setAttribute("muted", "");
-    vAtras.style.opacity = "0";
-    vAtras.src = src;
-    vAtras.load();
-
-    // Primer arranque: no hay video anterior que tape el hueco → mostrar el
-    // póster hasta que el primer video pinte.
-    if (primeraVez && poster) {
-      img.src = poster;
-      img.style.opacity = "1";
-    }
-
-    // REVELAR = solo crossfade de opacidad. NO toca currentTime ni play acá (eso
-    // ya pasó en `arrancar`), para no reiniciar el video a la vista ("arranca y
-    // vuelve a arrancar"). Muestra el de atrás, oculta el de adelante.
-    let revelado = false;
-    const revelar = () => {
-      if (revelado || cancel) return;
-      revelado = true;
-      vAtras.style.opacity = "1";
-      vFrente.style.opacity = "0";
-      img.style.opacity = "0"; // por si estaba el póster inicial
-      frenteRef.current = 1 - frente;
-      onReadyRef.current?.();
-      // Al terminar el fundido, pausar el que quedó atrás (libera decoder).
-      timers.push(
-        setTimeout(() => {
-          if (cancel) return;
-          try { vFrente.pause(); } catch { /* noop */ }
-        }, CROSSFADE_MS + 80)
-      );
+      video.addEventListener("canplay", revelar, { once: true });
+      video.addEventListener("loadeddata", revelar, { once: true });
+      timers.push(setTimeout(revelar, 1500)); // por si no llegan eventos
     };
 
-    // ARRANCAR = reproducir UNA sola vez desde el frame 0, y esperar a que pinte
-    // el primer frame antes de revelar (crossfade). Así la animación de entrada
-    // se ve completa desde 0 y sin reinicios.
-    let arrancado = false;
-    const arrancar = () => {
-      if (arrancado || cancel) return;
-      arrancado = true;
-      try { vAtras.currentTime = 0; } catch { /* metadata podría no estar */ }
-      const p = vAtras.play();
-      if (p && typeof p.catch === "function") p.catch(() => {});
-      const vR = vAtras as VideoRVFC;
-      if (typeof vR.requestVideoFrameCallback === "function") {
-        // Frame realmente presentado en el plano → revelar sin riesgo de negro.
-        vR.requestVideoFrameCallback(() => revelar());
-      } else {
-        // Sin rVFC: un par de rAF tras el play para que haya pintado.
-        requestAnimationFrame(() => requestAnimationFrame(() => revelar()));
-      }
-    };
-
-    // Arrancar recién con metadata (para poder fijar currentTime=0 y play limpio).
-    if (vAtras.readyState >= 1) {
-      arrancar();
+    // Con póster y NO en el arranque: dejar que el cover (póster nuevo) TERMINE
+    // de cruzar sobre la placa anterior antes de recargar el <video> (cuyo plano
+    // se pone negro al cargar) → el negro queda SIEMPRE detrás del cover. Sin
+    // póster, cargar ya (caso degradado).
+    if (poster && !primeraVez) {
+      timers.push(setTimeout(cargar, CROSSFADE_MS)); // ≈ duración del crossfade del cover
     } else {
-      vAtras.addEventListener("loadedmetadata", arrancar, { once: true });
-      vAtras.addEventListener("loadeddata", arrancar, { once: true });
+      cargar();
     }
-    // Red de seguridad: si no llega ninguna señal, arrancar y revelar igual.
-    timers.push(setTimeout(() => { arrancar(); revelar(); }, 2000));
 
     return () => {
       cancel = true;
       timers.forEach(clearTimeout);
     };
-  }, [src, tipo, poster]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [src, tipo, poster]);
 
-  // Diagnóstico EN PANTALLA (abrir con ?diag=1): estado real de ambos <video>.
+  // Diagnóstico EN PANTALLA (abrir con ?diag=1): estado real del <video>.
   const [diag, setDiag] = useState<string | null>(null);
   useEffect(() => {
     if (typeof window === "undefined") return;
     if (new URLSearchParams(window.location.search).get("diag") !== "1") return;
     const id = setInterval(() => {
-      const linea = (v: HTMLVideoElement | null, i: number) => {
-        if (!v) return `v${i}=—`;
-        const e = v.error;
-        return (
-          `v${i} ${i === frenteRef.current ? "◀frente" : ""} ${(v.currentSrc || "").split("/").pop() || "—"}\n` +
-          `  ready=${v.readyState} net=${v.networkState} pause=${v.paused} op=${v.style.opacity || "1"}\n` +
-          `  t=${v.currentTime.toFixed(1)} err=${e ? `${e.code}` : "none"}`
-        );
-      };
-      const rvfc =
-        typeof (vidRefs[0].current as VideoRVFC | null)?.requestVideoFrameCallback === "function"
-          ? "sí" : "NO";
-      setDiag(`rVFC=${rvfc}\n${linea(vidRefs[0].current, 0)}\n${linea(vidRefs[1].current, 1)}`);
+      const v = videoRef.current;
+      if (!v) return;
+      const e = v.error;
+      setDiag(
+        `src=${(v.currentSrc || "").split("/").pop() || "—"}\n` +
+          `ready=${v.readyState} net=${v.networkState} pause=${v.paused}\n` +
+          `vid=${v.videoWidth}x${v.videoHeight} t=${v.currentTime.toFixed(1)}\n` +
+          `err=${e ? `${e.code} ${e.message || ""}` : "none"}`
+      );
     }, 500);
     return () => clearInterval(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
     <div style={{ position: "absolute", inset: 0, backgroundColor: "#000", overflow: "hidden" }}>
-      {/* Wrapper de rotación: los dos videos + la imagen giran juntos. */}
+      {/* Wrapper que rota el medio (solo personalizadas verticales). Video +
+          cover van DENTRO, así giran juntos sin desfasarse. */}
       <div style={rotadorStyle}>
-        {/* Buffer 0: visible al arranque. Buffer 1: oculto. El effect los alterna. */}
-        <video
-          ref={vidRefs[0]}
-          muted loop playsInline preload="auto"
-          style={{ ...mediaStyle, opacity: 1, transition: `opacity ${CROSSFADE_MS}ms ease-in-out` }}
-        />
-        <video
-          ref={vidRefs[1]}
-          muted loop playsInline preload="auto"
-          style={{ ...mediaStyle, opacity: 0, transition: `opacity ${CROSSFADE_MS}ms ease-in-out` }}
-        />
-        {/* Imagen: póster del primer arranque y placas tipo imagen. */}
+        {/* Sin autoPlay: el play lo controla el effect (recién cuando el cover se
+            desvaneció) para que la animación de entrada arranque desde 0 y suave. */}
+        <video ref={videoRef} muted loop playsInline preload="auto" style={mediaStyle} />
+        {/* Cover de contenido (póster / imagen). Renderiza SOBRE el plano de
+            video del TV, así tapa el hueco de carga con el frame, no negro. */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          ref={imgRef}
+          ref={coverRef}
           alt=""
           style={{
             ...mediaStyle,
             opacity: 0,
-            transition: `opacity ${CROSSFADE_MS}ms ease-in-out`,
+            transition: `opacity ${CROSSFADE_MS}ms ease-out`,
             pointerEvents: "none",
           }}
         />
@@ -264,7 +236,7 @@ export default function VideoEngine({
         <div style={{
           position: "absolute", top: 10, left: 10, zIndex: 80,
           background: "rgba(0,0,0,0.85)", color: "#4ade80",
-          font: "13px/1.4 monospace", padding: "8px 10px",
+          font: "14px/1.5 monospace", padding: "8px 10px",
           whiteSpace: "pre", pointerEvents: "none", borderRadius: 4,
         }}>
           {diag}
