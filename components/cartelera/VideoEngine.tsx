@@ -151,17 +151,13 @@ export default function VideoEngine({
       img.style.opacity = "1";
     }
 
+    // REVELAR = solo crossfade de opacidad. NO toca currentTime ni play acá (eso
+    // ya pasó en `arrancar`), para no reiniciar el video a la vista ("arranca y
+    // vuelve a arrancar"). Muestra el de atrás, oculta el de adelante.
     let revelado = false;
     const revelar = () => {
       if (revelado || cancel) return;
       revelado = true;
-      // Arrancar la reproducción desde el frame 0 (animación de entrada completa)
-      // y hacer el crossfade: mostrar el de atrás, ocultar el de adelante.
-      try {
-        vAtras.currentTime = 0;
-      } catch { /* metadata podría no estar */ }
-      const p = vAtras.play();
-      if (p && typeof p.catch === "function") p.catch(() => {});
       vAtras.style.opacity = "1";
       vFrente.style.opacity = "0";
       img.style.opacity = "0"; // por si estaba el póster inicial
@@ -172,25 +168,39 @@ export default function VideoEngine({
         setTimeout(() => {
           if (cancel) return;
           try { vFrente.pause(); } catch { /* noop */ }
-        }, CROSSFADE_MS + 60)
+        }, CROSSFADE_MS + 80)
       );
     };
 
-    // Señal preferida: requestVideoFrameCallback (frame realmente presentado).
-    const vRVFC = vAtras as VideoRVFC;
-    if (typeof vRVFC.requestVideoFrameCallback === "function") {
-      // Hay que estar reproduciendo para que emita frames; arrancamos oculto,
-      // pedimos el primer frame y ahí revelamos (ya reposicionado a 0 en revelar).
-      const pp = vAtras.play();
-      if (pp && typeof pp.catch === "function") pp.catch(() => {});
-      vRVFC.requestVideoFrameCallback(() => revelar());
+    // ARRANCAR = reproducir UNA sola vez desde el frame 0, y esperar a que pinte
+    // el primer frame antes de revelar (crossfade). Así la animación de entrada
+    // se ve completa desde 0 y sin reinicios.
+    let arrancado = false;
+    const arrancar = () => {
+      if (arrancado || cancel) return;
+      arrancado = true;
+      try { vAtras.currentTime = 0; } catch { /* metadata podría no estar */ }
+      const p = vAtras.play();
+      if (p && typeof p.catch === "function") p.catch(() => {});
+      const vR = vAtras as VideoRVFC;
+      if (typeof vR.requestVideoFrameCallback === "function") {
+        // Frame realmente presentado en el plano → revelar sin riesgo de negro.
+        vR.requestVideoFrameCallback(() => revelar());
+      } else {
+        // Sin rVFC: un par de rAF tras el play para que haya pintado.
+        requestAnimationFrame(() => requestAnimationFrame(() => revelar()));
+      }
+    };
+
+    // Arrancar recién con metadata (para poder fijar currentTime=0 y play limpio).
+    if (vAtras.readyState >= 1) {
+      arrancar();
     } else {
-      // Fallback (navegadores sin rVFC): canplay/loadeddata.
-      vAtras.addEventListener("canplay", revelar, { once: true });
-      vAtras.addEventListener("loadeddata", revelar, { once: true });
+      vAtras.addEventListener("loadedmetadata", arrancar, { once: true });
+      vAtras.addEventListener("loadeddata", arrancar, { once: true });
     }
-    // Red de seguridad: si no llega ninguna señal, revelar igual.
-    timers.push(setTimeout(revelar, 1800));
+    // Red de seguridad: si no llega ninguna señal, arrancar y revelar igual.
+    timers.push(setTimeout(() => { arrancar(); revelar(); }, 2000));
 
     return () => {
       cancel = true;
@@ -213,7 +223,10 @@ export default function VideoEngine({
           `  t=${v.currentTime.toFixed(1)} err=${e ? `${e.code}` : "none"}`
         );
       };
-      setDiag(`${linea(vidRefs[0].current, 0)}\n${linea(vidRefs[1].current, 1)}`);
+      const rvfc =
+        typeof (vidRefs[0].current as VideoRVFC | null)?.requestVideoFrameCallback === "function"
+          ? "sí" : "NO";
+      setDiag(`rVFC=${rvfc}\n${linea(vidRefs[0].current, 0)}\n${linea(vidRefs[1].current, 1)}`);
     }, 500);
     return () => clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
