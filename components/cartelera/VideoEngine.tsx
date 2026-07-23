@@ -162,7 +162,14 @@ export default function VideoEngine({
         // Cuando el video está PINTANDO ('timeupdate' = avanzó el tiempo = hay
         // frames en el plano), subirlo por opacidad SOBRE el póster. Como el
         // video sólo se movió unos frames desde 0, el cruce póster→video es
-        // invisible. Al terminar el fundido, ocultar el póster backstop.
+        // invisible.
+        //
+        // El póster NO se apaga: queda como BACKSTOP SÓLIDO PERMANENTE debajo del
+        // <video> (z-index 1). El video, opaco, lo tapa mientras pinta bien; si el
+        // plano de video del TV parpadea negro en cualquier momento (durante la
+        // animación de entrada o al reiniciar el loop), asoma el póster de ESTA
+        // placa en vez del negro. Se re-apunta al póster nuevo en cada transición
+        // (arrancar()), así siempre coincide con la placa en pantalla.
         let fundido = false;
         const fundir = () => {
           if (fundido || cancel) return;
@@ -170,11 +177,6 @@ export default function VideoEngine({
           video.removeEventListener("timeupdate", fundir);
           video.style.opacity = "1";
           onReadyRef.current?.();
-          timers.push(
-            setTimeout(() => {
-              if (!cancel) cover.style.opacity = "0";
-            }, CROSSFADE_MS + 40)
-          );
         };
         video.addEventListener("timeupdate", fundir);
         // Fallback: si no llega 'timeupdate', fundir igual tras un margen corto.
@@ -265,11 +267,11 @@ export default function VideoEngine({
             transition: `opacity ${CROSSFADE_MS}ms ease-out`,
           }}
         />
-        {/* Póster BACKSTOP, DEBAJO del video (z-index 1). Su opacidad es
-            INSTANTÁNEA (sin transición): aparece/desaparece de golpe pero SIEMPRE
-            tapado por el video, así que el cambio es invisible. Lo importante es
-            que mientras está en 1 sea 100% opaco (backstop sólido), para que el
-            fondo negro nunca se cuele durante el fundido del video. */}
+        {/* Póster BACKSTOP, DEBAJO del video (z-index 1). Se prende de golpe
+            (sin transición) al arrancar la transición y NO se apaga: queda como
+            backstop sólido permanente. El video, opaco, lo tapa cuando pinta; si
+            el plano del TV se blanquea (entrada del video o reinicio del loop),
+            asoma el póster de la placa actual en vez del negro del contenedor. */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           ref={coverRef}

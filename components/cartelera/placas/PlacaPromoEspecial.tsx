@@ -23,8 +23,11 @@ export default function PlacaPromoEspecial({
           leftPct={42}
           boxWidthPct={36}
           boxHeightPct={30}
-          maxFontPx={90}
-          minFontPx={50}
+          // Referencia = la fecha de validez de abajo (fontPx 40). El combo es el
+          // titular: apenas más grande que la fecha, nunca gigante. maxFontPx 90
+          // hacía que un combo corto llenara el cap y saliera enorme en el TV.
+          maxFontPx={54}
+          minFontPx={40}
           weight={700}
           color={COLORS.blancoSobreFondo}
           wrap
