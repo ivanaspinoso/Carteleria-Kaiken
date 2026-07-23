@@ -129,19 +129,14 @@ export default function VideoEngine({
       };
     }
 
-    // ARQUITECTURA anti-negro: el PÓSTER (cover) es un BACKSTOP que queda DEBAJO
-    // del <video> (z-index). El <video> se funde por ENCIMA: el viejo se va
-    // (opacity → 0) y el nuevo entra (opacity → 1). Mientras el plano del video
-    // está en negro (al recargar el src), el <video> está en opacity 0, así que
-    // lo que se ve es el póster — NUNCA el negro del plano. El póster se oculta
-    // recién cuando el video nuevo ya lo tapa (opaco).
-    if (poster) cover.src = poster;
-    cover.style.opacity = poster ? "1" : "0";
-
-    // Fundir el video ACTUAL (viejo) hacia afuera → debajo aparece el póster.
-    // (En el primer arranque sin póster, dejar el video visible: no hay backstop
-    // ni video viejo, así que ocultarlo solo daría negro hasta que cargue.)
-    if (!primeraVez || poster) video.style.opacity = "0";
+    // ARQUITECTURA anti-negro: el PÓSTER (cover) es un BACKSTOP SÓLIDO e
+    // INSTANTÁNEO (sin fundido) DEBAJO del <video> (z-index). SOLO el <video>
+    // hace fundidos por encima: el viejo sale (opacity 1→0) revelando el póster
+    // sólido, el nuevo entra (0→1) tapando el póster. Como el póster está SIEMPRE
+    // 100% opaco durante toda la transición, el fondo negro del contenedor nunca
+    // se cuela. (Antes el póster ENTRABA con fundido a la vez que el video SALÍA
+    // → en el medio ninguna capa tapaba del todo → se colaba el negro; se notaba
+    // entre placas de diseño distinto. Con backstop sólido no pasa.)
 
     const cargar = () => {
       if (cancel) return;
@@ -190,31 +185,39 @@ export default function VideoEngine({
       timers.push(setTimeout(revelar, 1500)); // por si no llegan eventos
     };
 
-    // Recargar el <video> (que blanquea el plano) recién cuando (a) el póster
-    // está PINTADO (backstop listo) y (b) el video viejo terminó de fundirse a 0
-    // (~CROSSFADE_MS). Así el blanqueo ocurre con el video ya invisible y el
-    // póster tapando. Sin póster / primer arranque: cargar ya.
-    if (poster && !primeraVez) {
-      const dispararCargar = () => {
-        if (!cancel) timers.push(setTimeout(cargar, CROSSFADE_MS));
-      };
+    // Arranca la transición: pone el póster SÓLIDO (backstop), funde el video
+    // viejo por encima, y tras el fundido recarga el <video>.
+    const arrancar = () => {
+      if (cancel) return;
+      cover.style.opacity = "1"; // backstop sólido (instantáneo)
+      video.style.opacity = "0"; // funde el video viejo SOBRE el póster sólido
+      timers.push(setTimeout(cargar, primeraVez ? 0 : CROSSFADE_MS));
+    };
+
+    if (poster) {
+      cover.src = poster;
+      // Fundir el video viejo recién cuando el póster esté PINTADO (backstop
+      // sólido de verdad); si no, se revelaría un cover todavía en blanco.
       if (cover.complete && cover.naturalWidth > 0) {
-        dispararCargar();
+        arrancar();
       } else {
         const alCargarCover = () => {
           cover.removeEventListener("load", alCargarCover);
-          dispararCargar();
+          arrancar();
         };
         cover.addEventListener("load", alCargarCover, { once: true });
         // Fallback: si el 'load' no llega, no bloquear la rotación para siempre.
         timers.push(
           setTimeout(() => {
             cover.removeEventListener("load", alCargarCover);
-            dispararCargar();
+            arrancar();
           }, 600)
         );
       }
     } else {
+      // Sin póster (personalizada sin póster): no hay backstop → degradado.
+      cover.style.opacity = "0";
+      if (!primeraVez) video.style.opacity = "0";
       cargar();
     }
 
@@ -262,8 +265,11 @@ export default function VideoEngine({
             transition: `opacity ${CROSSFADE_MS}ms ease-out`,
           }}
         />
-        {/* Póster BACKSTOP, DEBAJO del video (z-index 1). Queda visible mientras
-            el video está en opacity 0, tapando el negro del plano de carga. */}
+        {/* Póster BACKSTOP, DEBAJO del video (z-index 1). Su opacidad es
+            INSTANTÁNEA (sin transición): aparece/desaparece de golpe pero SIEMPRE
+            tapado por el video, así que el cambio es invisible. Lo importante es
+            que mientras está en 1 sea 100% opaco (backstop sólido), para que el
+            fondo negro nunca se cuele durante el fundido del video. */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           ref={coverRef}
@@ -272,7 +278,6 @@ export default function VideoEngine({
             ...mediaStyle,
             zIndex: 1,
             opacity: 0,
-            transition: `opacity ${CROSSFADE_MS}ms ease-out`,
             pointerEvents: "none",
           }}
         />
