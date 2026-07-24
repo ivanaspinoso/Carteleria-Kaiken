@@ -4,10 +4,21 @@ import { useEffect, useRef, useState, type CSSProperties } from "react";
 
 export type MediaTipo = "video" | "imagen";
 
-// Duración del crossfade del cover (póster). Corto = transición ágil/dinámica.
-// El mismo valor se usa para esperar a que el cover tape antes de recargar el
-// <video> (así el negro de carga queda detrás del cover, nunca a la vista).
-const CROSSFADE_MS = 160;
+// El <video> NO se funde: se PRENDE Y APAGA DE GOLPE. Medido en el TV (grabación
+// de la cartelera, 2026-07-24): cada fundido de opacidad del <video> deja la
+// pantalla en NEGRO durante TODO el fundido. El plano de video por hardware del
+// TV no se mezcla con la capa HTML: mientras la opacidad está EN TRANSICIÓN el TV
+// pinta negro en esa región, y el póster que está debajo (z-index 1) no se ve a
+// través. Con 160ms de fundido salían 2 destellos negros de ~170ms por cambio de
+// placa — uno al apagar el video viejo y otro al prender el nuevo — que es
+// exactamente lo que se ve en la grabación. Con la opacidad QUIETA (0 ó 1) el
+// póster sí se ve bien: los 0.9s que tarda el TV en cargar el mp4 se ven perfectos.
+// Como el póster ES el frame 0 del video, el corte póster↔video es invisible.
+//
+// Margen (ms) entre apagar el <video> y recargarle el src: le da al compositor
+// del TV un par de frames para dejar la opacidad aplicada antes de que el plano
+// se ponga negro por la recarga.
+const APAGADO_MS = 60;
 
 /**
  * Motor de medios para signage en Smart TV (Tizen / WebOS / Android WebView).
@@ -25,8 +36,9 @@ const CROSSFADE_MS = 160;
  * placa, una imagen estática que SÍ renderiza sobre el plano de video del TV)
  * tapa el hueco de carga con el CONTENIDO de la placa — nunca negro. Como el
  * póster es el frame 0 del video, cuando el <video> revela y arranca en 0 el
- * cruce es invisible. El cover hace crossfade desde la placa anterior y, al
- * revelarse el video nuevo, se desvanece hacia el vivo.
+ * cruce es invisible. NADA de esto usa fundidos: todos los cambios de capa son
+ * CORTES SECOS, porque animar la opacidad del <video> pone el TV en negro (ver
+ * la nota de APAGADO_MS arriba).
  */
 export default function VideoEngine({
   src,
@@ -130,13 +142,13 @@ export default function VideoEngine({
     }
 
     // ARQUITECTURA anti-negro: el PÓSTER (cover) es un BACKSTOP SÓLIDO e
-    // INSTANTÁNEO (sin fundido) DEBAJO del <video> (z-index). SOLO el <video>
-    // hace fundidos por encima: el viejo sale (opacity 1→0) revelando el póster
-    // sólido, el nuevo entra (0→1) tapando el póster. Como el póster está SIEMPRE
-    // 100% opaco durante toda la transición, el fondo negro del contenedor nunca
-    // se cuela. (Antes el póster ENTRABA con fundido a la vez que el video SALÍA
-    // → en el medio ninguna capa tapaba del todo → se colaba el negro; se notaba
-    // entre placas de diseño distinto. Con backstop sólido no pasa.)
+    // INSTANTÁNEO DEBAJO del <video> (z-index), y el <video> se prende/apaga de
+    // GOLPE por encima: el viejo se apaga (opacity 1→0) revelando el póster
+    // sólido, el nuevo se prende (0→1) tapando el póster. Ninguna de las dos
+    // capas se funde NUNCA. Ese era el bug: los 160ms de fundido del <video>
+    // eran 160ms de pantalla negra en el TV (dos por cambio de placa), porque el
+    // plano de video por hardware no se mezcla con el HTML mientras la opacidad
+    // está en transición y tapa en negro al póster que tiene debajo.
 
     const cargar = () => {
       if (cancel) return;
@@ -160,9 +172,10 @@ export default function VideoEngine({
         if (p && typeof p.catch === "function") p.catch(() => {});
 
         // Cuando el video está PINTANDO ('timeupdate' = avanzó el tiempo = hay
-        // frames en el plano), subirlo por opacidad SOBRE el póster. Como el
-        // video sólo se movió unos frames desde 0, el cruce póster→video es
-        // invisible.
+        // frames en el plano), prenderlo DE GOLPE sobre el póster. Como el video
+        // sólo se movió unos frames desde 0 y el póster ES el frame 0, el corte
+        // póster→video es invisible. Esperar a 'timeupdate' es lo que evita
+        // prender un plano todavía negro.
         //
         // El póster NO se apaga: queda como BACKSTOP SÓLIDO PERMANENTE debajo del
         // <video> (z-index 1). El video, opaco, lo tapa mientras pinta bien; si el
@@ -170,30 +183,30 @@ export default function VideoEngine({
         // animación de entrada o al reiniciar el loop), asoma el póster de ESTA
         // placa en vez del negro. Se re-apunta al póster nuevo en cada transición
         // (arrancar()), así siempre coincide con la placa en pantalla.
-        let fundido = false;
-        const fundir = () => {
-          if (fundido || cancel) return;
-          fundido = true;
-          video.removeEventListener("timeupdate", fundir);
+        let prendido = false;
+        const prender = () => {
+          if (prendido || cancel) return;
+          prendido = true;
+          video.removeEventListener("timeupdate", prender);
           video.style.opacity = "1";
           onReadyRef.current?.();
         };
-        video.addEventListener("timeupdate", fundir);
-        // Fallback: si no llega 'timeupdate', fundir igual tras un margen corto.
-        timers.push(setTimeout(fundir, 300));
+        video.addEventListener("timeupdate", prender);
+        // Fallback: si no llega 'timeupdate', prender igual tras un margen corto.
+        timers.push(setTimeout(prender, 300));
       };
       video.addEventListener("canplay", revelar, { once: true });
       video.addEventListener("loadeddata", revelar, { once: true });
       timers.push(setTimeout(revelar, 1500)); // por si no llegan eventos
     };
 
-    // Arranca la transición: pone el póster SÓLIDO (backstop), funde el video
-    // viejo por encima, y tras el fundido recarga el <video>.
+    // Arranca la transición: pone el póster SÓLIDO (backstop), apaga el video
+    // viejo de golpe y, un par de frames después, le recarga el src.
     const arrancar = () => {
       if (cancel) return;
       cover.style.opacity = "1"; // backstop sólido (instantáneo)
-      video.style.opacity = "0"; // funde el video viejo SOBRE el póster sólido
-      timers.push(setTimeout(cargar, primeraVez ? 0 : CROSSFADE_MS));
+      video.style.opacity = "0"; // apaga el video viejo DE GOLPE (sin fundido)
+      timers.push(setTimeout(cargar, primeraVez ? 0 : APAGADO_MS));
     };
 
     if (poster) {
@@ -264,7 +277,9 @@ export default function VideoEngine({
             ...mediaStyle,
             zIndex: 2,
             opacity: 1,
-            transition: `opacity ${CROSSFADE_MS}ms ease-out`,
+            // SIN transición a propósito: fundir esta capa pone el TV en negro
+            // durante todo el fundido (ver nota de APAGADO_MS).
+            transition: "none",
           }}
         />
         {/* Póster BACKSTOP, DEBAJO del video (z-index 1). Se prende de golpe

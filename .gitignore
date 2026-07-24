@@ -48,3 +48,7 @@ scripts/_*.png
 
 # herramientas locales (plugin caveman)
 skills-lock.json
+
+# grabaciones del TV para diagnosticar transiciones (pesadas, no van al repo
+# ni al deploy: NUNCA dejarlas en public/)
+/evidencia/
