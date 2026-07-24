@@ -328,6 +328,38 @@ export type Database = {
           },
         ];
       };
+      pantallas_imagen: {
+        Row: {
+          pantalla_id: number;
+          imagen_url: string;
+          imagen_path: string;
+          actualizada_en: string;
+          actualizada_por: string | null;
+        };
+        Insert: {
+          pantalla_id: number;
+          imagen_url: string;
+          imagen_path: string;
+          actualizada_en?: string;
+          actualizada_por?: string | null;
+        };
+        Update: {
+          pantalla_id?: number;
+          imagen_url?: string;
+          imagen_path?: string;
+          actualizada_en?: string;
+          actualizada_por?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "pantallas_imagen_pantalla_id_fkey";
+            columns: ["pantalla_id"];
+            isOneToOne: true;
+            referencedRelation: "pantallas";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;
@@ -362,7 +394,9 @@ export type Database = {
         | "rotativa"
         | "sabores-clasicos-especiales"
         | "tamanos-postres"
-        | "cafeteria-pasteleria";
+        | "cafeteria-pasteleria"
+        // Una sola imagen subida desde el admin (P2)
+        | "imagen-unica";
       // No es un enum real de Postgres (es un CHECK sobre text), pero lo
       // modelamos como unión para tipado fuerte en el front.
       orientacion_pantalla: "horizontal" | "vertical";

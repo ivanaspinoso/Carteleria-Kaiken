@@ -40,6 +40,31 @@ export function usePantallaData(pantallaId: number, initial: DatosPantalla) {
 
     if (e1 || e2 || e3 || e4 || e5 || e6) return;
 
+    // La imagen única se pide SOLO si esta pantalla está en ese modo. Así las
+    // demás (P1, P3, P4, P5) hacen exactamente las mismas consultas que antes,
+    // ni una más. Si la query falla (ej. el deploy salió antes de la migración)
+    // queda en null y el resto sigue funcionando igual.
+    //
+    // El override ?template= también cuenta acá: si no, previsualizar el modo
+    // imagen mostraría la pantalla nueva SIN la imagen (el fetch quedaba
+    // gateado por el template viejo de la base) y siempre se vería el cartel
+    // de "no hay imagen cargada".
+    const forzado =
+      typeof window !== "undefined"
+        ? new URLSearchParams(window.location.search).get("template")
+        : null;
+    const templateEnUso = forzado ?? pantalla!.template;
+
+    let imagenPantalla: DatosPantalla["imagen_pantalla"] = null;
+    if (templateEnUso === "imagen-unica") {
+      const { data } = await supabase
+        .from("pantallas_imagen")
+        .select("*")
+        .eq("pantalla_id", pantallaId)
+        .maybeSingle();
+      imagenPantalla = data ?? null;
+    }
+
     const nuevos: DatosPantalla = {
       pantalla: { ...pantalla!, config: parsePantallaConfig(pantalla!.config) },
       categorias: categorias!,
@@ -47,6 +72,7 @@ export function usePantallaData(pantallaId: number, initial: DatosPantalla) {
       promos: promos! as unknown as PromoConProducto[],
       placas_fijas: placasFijas ?? [],
       placas_personalizadas: placasPersonalizadas ?? [],
+      imagen_pantalla: imagenPantalla,
     };
     setDatos(nuevos);
     setOffline(false);
@@ -73,6 +99,14 @@ export function usePantallaData(pantallaId: number, initial: DatosPantalla) {
       .on("postgres_changes", { event: "*", schema: "public", table: "pantallas" }, debouncedFetch)
       .on("postgres_changes", { event: "*", schema: "public", table: "placas_fijas" }, debouncedFetch)
       .on("postgres_changes", { event: "*", schema: "public", table: "placas_personalizadas" }, debouncedFetch)
+      // Imagen única (P2): al reemplazarla desde el admin, el TV la cambia solo.
+      // Con filtro por pantalla_id: las otras pantallas nunca reciben este
+      // evento, así que para ellas es como si esta línea no existiera.
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "pantallas_imagen", filter: `pantalla_id=eq.${pantallaId}` },
+        debouncedFetch
+      )
       .subscribe();
 
     // Heartbeat: actualiza ultima_conex para que el panel de Pantallas muestre online

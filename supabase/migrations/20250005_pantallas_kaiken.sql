@@ -19,7 +19,15 @@ INSERT INTO pantallas (id, nombre, template, pulgadas, orientacion, config, acti
   (5, 'Vertical Derecha',                 'rotativa',                     50, 'vertical',   '{"desfase_segundos": 30}'::jsonb, true)
 ON CONFLICT (id) DO UPDATE SET
   nombre      = EXCLUDED.nombre,
-  template    = EXCLUDED.template,
+  -- El template NO se pisa si la pantalla ya está en modo 'imagen-unica'.
+  -- Ese cambio se activa A MANO (supabase/activar-pantalla2-imagen.sql) y este
+  -- archivo se re-ejecuta entero en cada `npm run db:migrate`; sin esta guarda,
+  -- una corrida de migraciones devolvería la pantalla al modo dinámico sin que
+  -- nadie se entere.
+  template    = CASE
+                  WHEN pantallas.template = 'imagen-unica' THEN pantallas.template
+                  ELSE EXCLUDED.template
+                END,
   pulgadas    = EXCLUDED.pulgadas,
   orientacion = EXCLUDED.orientacion,
   config      = EXCLUDED.config,

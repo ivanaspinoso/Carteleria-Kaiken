@@ -16,6 +16,8 @@ export type Log       = Tables<"logs">;
 export type PlacaFija = Tables<"placas_fijas">;
 export type PlacaPersonalizada = Tables<"placas_personalizadas">;
 export type PlacaPersonalizadaInsert = TablesInsert<"placas_personalizadas">;
+/** Imagen única que el cliente sube para una pantalla (template 'imagen-unica'). */
+export type PantallaImagen = Tables<"pantallas_imagen">;
 
 /**
  * El producto "Kilo Kaikén" alimenta la placa vertical homónima (precio +
@@ -73,6 +75,9 @@ export interface DatosPantalla {
   placas_fijas: PlacaFija[];
   // Placas personalizadas que subió el cliente (solo verticales 1 y 5).
   placas_personalizadas: PlacaPersonalizada[];
+  // Imagen única de esta pantalla (solo template 'imagen-unica'; null si no
+  // subieron ninguna todavía).
+  imagen_pantalla: PantallaImagen | null;
 }
 
 // Helper para parsear el config JSONB desde la DB

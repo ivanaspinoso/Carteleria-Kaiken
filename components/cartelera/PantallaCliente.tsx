@@ -2,12 +2,13 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Maximize, Minimize } from "lucide-react";
-import type { DatosPantalla } from "@/lib/types";
+import type { DatosPantalla, TemplatePantalla } from "@/lib/types";
 import { usePantallaData } from "@/hooks/usePantallaData";
 import PantallaSabores from "./PantallaSabores";
 import PantallaCafeteria from "./PantallaCafeteria";
 import PantallaPostres from "./PantallaPostres";
 import PantallaRotativa from "./PantallaRotativa";
+import PantallaImagenUnica from "./PantallaImagenUnica";
 import PantallaSaboresClasicosEspeciales from "./horizontales/PantallaSaboresClasicosEspeciales";
 import PantallaTamanosPostres from "./horizontales/PantallaTamanosPostres";
 import PantallaCafeteriaPasteleria from "./horizontales/PantallaCafeteriaPasteleria";
@@ -15,9 +16,11 @@ import PantallaCafeteriaPasteleria from "./horizontales/PantallaCafeteriaPastele
 interface Props {
   pantallaId: number;
   initial: DatosPantalla;
+  /** Template a previsualizar (?template=), ya resuelto en el servidor. */
+  templateForzado?: string | null;
 }
 
-export default function PantallaCliente({ pantallaId, initial }: Props) {
+export default function PantallaCliente({ pantallaId, initial, templateForzado = null }: Props) {
   const { datos, offline, debug } = usePantallaData(pantallaId, initial);
   const { pantalla } = datos;
 
@@ -27,6 +30,16 @@ export default function PantallaCliente({ pantallaId, initial }: Props) {
   // En pantallas verticales (P1/P5) se activa SOLA al cargar; el sentido se
   // puede forzar/ajustar por URL con ?rotar=90 / ?rotar=-90 / ?rotar=0.
   const [rotacion, setRotacion] = useState<0 | 90 | -90>(0);
+  // Previsualizar un template distinto al que tiene la pantalla en la base,
+  // con ?template=imagen-unica. Sirve para ver cómo va a quedar un cambio ANTES
+  // de tocar la base (que es la misma que leen los TVs del local). Solo afecta
+  // a quien abre esa URL; no cambia ningún dato.
+  // Arranca ya resuelto desde el servidor: si esperáramos al useEffect, el
+  // primer render mostraría la pantalla vieja y recién después la nueva.
+  const [templateUrl, setTemplateUrl] = useState<TemplatePantalla | null>(
+    (templateForzado as TemplatePantalla | null) ?? null
+  );
+  const templateEnUso = templateUrl ?? pantalla.template;
   const [enFullscreen, setEnFullscreen] = useState(false);
   // Qué pasó en el último intento de pantalla completa. El TV puede RECHAZAR el
   // pedido sin decir nada (se ve igual que si el botón no hiciera nada), así que
@@ -69,6 +82,8 @@ export default function PantallaCliente({ pantallaId, initial }: Props) {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
+    const t = params.get("template");
+    if (t) setTemplateUrl(t as TemplatePantalla);
     const r = params.get("rotar");
     if (r === "90") setRotacion(90);
     else if (r === "-90") setRotacion(-90);
@@ -182,10 +197,17 @@ export default function PantallaCliente({ pantallaId, initial }: Props) {
   }
 
   function renderTemplate() {
-    switch (pantalla.template) {
+    switch (templateEnUso) {
       // ===== Templates reales de Kaikén =====
       case "rotativa":
         return <PantallaRotativa datos={datos} videoLayer={videoLayer} rotacion={rotacion} vp={vp} />;
+      // Una sola imagen subida desde el admin (P2 desde 2026-07).
+      case "imagen-unica":
+        return <PantallaImagenUnica datos={datos} />;
+      // La P2 dinámica quedó sin uso, pero el case se mantiene: para volver
+      // al modo sabores clásicos + especiales alcanza con revertir el template
+      // en la base (UPDATE pantallas SET template = 'sabores-clasicos-especiales'
+      // WHERE id = 2). Los productos nunca se borraron.
       case "sabores-clasicos-especiales":
         return <PantallaSaboresClasicosEspeciales datos={datos} />;
       case "tamanos-postres":
@@ -204,7 +226,7 @@ export default function PantallaCliente({ pantallaId, initial }: Props) {
       default:
         return (
           <div className="w-full h-full flex items-center justify-center bg-black text-white">
-            Template desconocido: {pantalla.template}
+            Template desconocido: {templateEnUso}
           </div>
         );
     }
@@ -298,7 +320,10 @@ export default function PantallaCliente({ pantallaId, initial }: Props) {
             ◉ DEBUG
           </p>
           <p>Pantalla: #{pantalla.id} — {pantalla.nombre}</p>
-          <p>Template: {pantalla.template}</p>
+          <p>
+            Template: {templateEnUso}
+            {templateUrl && <span style={{ color: "#facc15" }}> (forzado por ?template=)</span>}
+          </p>
           <p>Pulgadas: {pantalla.pulgadas}&rdquo;</p>
           <p>Categorías: {datos.categorias.length}</p>
           <p>Productos: {datos.productos.length}</p>

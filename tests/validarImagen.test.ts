@@ -1,5 +1,13 @@
 import { describe, it, expect } from "vitest";
-import { validarPlaca, validarVideo, esVideoUrl, MAX_BYTES, MAX_VIDEO_BYTES } from "@/lib/cartelera/validarImagen";
+import {
+  validarPlaca,
+  validarVideo,
+  validarImagenPantalla,
+  esVideoUrl,
+  MAX_BYTES,
+  MAX_VIDEO_BYTES,
+  MAX_BYTES_PANTALLA,
+} from "@/lib/cartelera/validarImagen";
 
 const base = { type: "image/png", size: 1_000_000, width: 1080, height: 1920 };
 
@@ -70,6 +78,46 @@ describe("validarVideo", () => {
     const r = validarVideo({ ...baseVid, width: 720, height: 1280 });
     expect(r.ok).toBe(true);
     expect(r.warn).toBeTruthy();
+  });
+});
+
+describe("validarImagenPantalla", () => {
+  const horizontal = { type: "image/jpeg", size: 2_000_000, width: 1920, height: 1080 };
+
+  it("acepta JPG 1920×1080 sin advertencias", () => {
+    expect(validarImagenPantalla(horizontal)).toEqual({ ok: true });
+  });
+
+  it("acepta PNG también", () => {
+    expect(validarImagenPantalla({ ...horizontal, type: "image/png" }).ok).toBe(true);
+  });
+
+  it("rechaza formato no permitido", () => {
+    const r = validarImagenPantalla({ ...horizontal, type: "image/webp" });
+    expect(r.ok).toBe(false);
+    expect(r.error).toMatch(/Formato/);
+  });
+
+  it("rechaza imágenes de más de 10MB", () => {
+    const r = validarImagenPantalla({ ...horizontal, size: MAX_BYTES_PANTALLA + 1 });
+    expect(r.ok).toBe(false);
+    expect(r.error).toMatch(/10MB/);
+  });
+
+  it("acepta pero advierte si la resolución es menor a la recomendada", () => {
+    const r = validarImagenPantalla({ ...horizontal, width: 1280, height: 720 });
+    expect(r.ok).toBe(true);
+    expect(r.warn).toMatch(/1920/);
+  });
+
+  it("acepta pero advierte si no es 16:9 (se ve completa, con borde)", () => {
+    const r = validarImagenPantalla({ ...horizontal, width: 1920, height: 1920 });
+    expect(r.ok).toBe(true);
+    expect(r.warn).toMatch(/16:9/);
+  });
+
+  it("acepta 4K 16:9 sin advertencias", () => {
+    expect(validarImagenPantalla({ ...horizontal, width: 3840, height: 2160 })).toEqual({ ok: true });
   });
 });
 

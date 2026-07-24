@@ -12,6 +12,15 @@ export const MIN_ALTO = 1920;
 export const RATIO_OBJETIVO = 9 / 16;
 export const TOLERANCIA_RATIO = 0.1; // 10%
 
+// ── Imagen única de una pantalla horizontal (template 'imagen-unica') ────────
+// Es otro caso que las placas verticales: acá la imagen se muestra COMPLETA
+// (contain), así que ninguna proporción rompe nada — lo que no encaja queda con
+// el fondo crema. Por eso resolución y proporción son solo advertencia.
+export const MAX_BYTES_PANTALLA = 10 * 1024 * 1024; // 10MB
+export const ANCHO_RECOMENDADO_PANTALLA = 1920;
+export const ALTO_RECOMENDADO_PANTALLA = 1080;
+export const RATIO_PANTALLA = 16 / 9;
+
 /** ¿La URL apunta a un video (por extensión)? */
 export function esVideoUrl(url: string): boolean {
   return /\.(mp4|webm)(\?.*)?$/i.test(url);
@@ -47,6 +56,51 @@ export function validarPlaca(meta: MetaImagen): ResultadoValidacion {
     return { ok: true, warn: "No es del todo vertical (tipo historia de Instagram) — se mostrará completa igual, puede quedar con un borde." };
   }
   return { ok: true };
+}
+
+/**
+ * Validación pura de la imagen única de una pantalla (JPG/PNG hasta 10MB).
+ * Como se muestra completa y sin recortar, lo único que bloquea es el formato
+ * y el peso; medida y proporción solo advierten.
+ */
+export function validarImagenPantalla(meta: MetaImagen): ResultadoValidacion {
+  if (!FORMATOS_OK.includes(meta.type)) {
+    return { ok: false, error: "Formato inválido: solo JPG o PNG." };
+  }
+  if (meta.size > MAX_BYTES_PANTALLA) {
+    return { ok: false, error: "La imagen supera los 10MB." };
+  }
+  if (meta.width < ANCHO_RECOMENDADO_PANTALLA || meta.height < ALTO_RECOMENDADO_PANTALLA) {
+    return {
+      ok: true,
+      warn: `Se recomienda ${ANCHO_RECOMENDADO_PANTALLA}×${ALTO_RECOMENDADO_PANTALLA} — con menos resolución puede verse borrosa en el TV.`,
+    };
+  }
+  const ratio = meta.width / meta.height;
+  const desvio = Math.abs(ratio - RATIO_PANTALLA) / RATIO_PANTALLA;
+  if (desvio > TOLERANCIA_RATIO) {
+    return {
+      ok: true,
+      warn: "No es 16:9 — se va a ver completa igual, con un borde crema donde sobre.",
+    };
+  }
+  return { ok: true };
+}
+
+/** Valida el File de la imagen de pantalla leyendo dimensiones del DOM. */
+export async function validarArchivoImagenPantalla(file: File): Promise<ResultadoValidacion> {
+  if (!FORMATOS_OK.includes(file.type)) {
+    return { ok: false, error: "Formato inválido: solo JPG o PNG." };
+  }
+  if (file.size > MAX_BYTES_PANTALLA) {
+    return { ok: false, error: "La imagen supera los 10MB." };
+  }
+  try {
+    const { width, height } = await leerDimensiones(file);
+    return validarImagenPantalla({ type: file.type, size: file.size, width, height });
+  } catch {
+    return { ok: false, error: "No se pudo leer la imagen." };
+  }
 }
 
 /** Validación pura de un video. Resolución/proporción son solo advertencia. */

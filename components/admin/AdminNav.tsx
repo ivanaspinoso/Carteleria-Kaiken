@@ -6,7 +6,7 @@ import { IceCream, Coffee, Cake, Tag, Monitor, History, Images, type LucideIcon 
 import LogoutButton from "./LogoutButton";
 
 const NAV_ITEMS: { href: string; label: string; Icon: LucideIcon }[] = [
-  { href: "/sabores",   label: "Sabores",   Icon: IceCream  },
+  { href: "/sabores",   label: "Pantalla 2 - Sabores (imagen)", Icon: IceCream },
   { href: "/cafeteria", label: "Cafetería", Icon: Coffee    },
   { href: "/postres",   label: "Postres",   Icon: Cake      },
   { href: "/promos",    label: "Promos",    Icon: Tag       },
