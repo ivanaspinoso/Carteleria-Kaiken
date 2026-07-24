@@ -20,7 +20,7 @@ Está pensada para que puedas hacer todo **sin saber nada de tecnología**. Cual
 3. [Cómo entrar al panel](#3-cómo-entrar-al-panel)
 4. [Lo más importante de entender](#4-lo-más-importante-de-entender)
 5. [El panel, sección por sección](#5-el-panel-sección-por-sección)
-   - 5.1 [Sabores](#51-sabores)
+   - 5.1 [Pantalla 2 - Sabores (imagen)](#51-pantalla-2---sabores-imagen)
    - 5.2 [Cafetería](#52-cafetería)
    - 5.3 [Postres (Tamaños y Postres)](#53-postres-tamaños-y-postres)
    - 5.4 [Promos](#54-promos)
@@ -50,7 +50,7 @@ En total hay **5 pantallas**: 3 apaisadas (horizontales) y 2 paradas (verticales
 | Pantalla | Orientación | Qué muestra |
 |---|---|---|
 | **Pantalla 1** | Vertical (parada) | Placas rotativas: antojos, promos, después del cole, kilos, gusto del día, novedad del mes, café, etc. (van pasando una tras otra). |
-| **Pantalla 2** | Horizontal | **Sabores Clásicos** (Cremas, Chocolate, Frutales, Dulce de Leche, Sin Azúcar) y **Sabores Especiales** (con foto y descripción). |
+| **Pantalla 2** | Horizontal | **Una imagen que subís vos** desde el panel (el listado de sabores, diseñado como quieras). Se cambia cuando querés, sin tocar el televisor. |
 | **Pantalla 3** | Horizontal | **Tamaños** (vasos, cucurucho, milkshake, kilos) y **Postres Helados** (con precio Chico / Grande). |
 | **Pantalla 4** | Horizontal | **Cafetería** (con el volumen, ej. 240ml) y **Pastelería**. |
 | **Pantalla 5** | Vertical (parada) | Placas de "entretenimiento": redes sociales, QR de delivery y las **placas personalizadas** (fotos/videos que subís vos). |
@@ -97,21 +97,28 @@ Tres cosas que te van a sacar el 90% de las dudas:
 
 Arriba de todo tenés las pestañas. Tocás una y entrás a esa sección.
 
-### 5.1 Sabores
+### 5.1 Pantalla 2 - Sabores (imagen)
 
-Acá manejás los helados que se muestran en la **Pantalla 2**.
+Acá subís **la imagen que se ve en la Pantalla 2**. Es lo único que muestra esa pantalla.
 
-Están agrupados por categoría: **Cremas, Chocolate, Frutales, Dulce de Leche, Sin Azúcar** (clásicos) y **Sabores Especiales**.
+Arriba vas a ver:
+- La **imagen que está en el aire** en este momento (y desde cuándo).
+- El botón **"Subir imagen"** (o **"Reemplazar imagen"**, si ya hay una).
 
-En cada sabor podés:
-- **Cambiar el nombre** → tocás el nombre y lo escribís.
-- **Cambiar el precio** → tocás el precio a la derecha y escribís el nuevo.
-- **Marcar sin stock / con stock** → con el botón de stock (ver [punto 6](#6-tareas-paso-a-paso)).
-- **Sabores Especiales:** además podés editar la **descripción** (ej. *"Chocolate con frutos rojos y torta volcán"*).
+Cómo tiene que ser la imagen:
+- **JPG o PNG**, hasta **10MB**.
+- Medida recomendada: **1920 × 1080** (horizontal, Full HD). Si la mandás más chica se va a ver **borrosa** en el televisor: el sistema te avisa, pero te deja subirla igual.
+- Se muestra **completa, sin recortar**. Si no es 16:9, queda un borde crema donde sobra (también te lo avisa antes de subir).
 
-> Los sabores **clásicos** solo tienen nombre y precio (no llevan descripción), porque en la pantalla se muestran así.
+> Ojo: la imagen sale al televisor apenas la confirmás. Por eso primero te muestra una **previsualización** y recién cambia cuando tocás **"Confirmar y publicar"**.
 
-> 🎥 **Video — Sección Sabores:** `__________________________`
+Más abajo hay un desplegable **"Editar sabores"**. Esos sabores **ya no se muestran en la Pantalla 2** (ahora esa pantalla es la imagen), pero se siguen usando en:
+- El **Gusto del Día** de las pantallas verticales.
+- Los **gustos del Kilo Kaikén**.
+
+Por eso siguen ahí y se editan igual que siempre: nombre, precio, sin stock y, en los especiales, la descripción.
+
+> 🎥 **Video — Cambiar la imagen de la Pantalla 2:** `__________________________`
 
 ### 5.2 Cafetería
 
@@ -201,7 +208,7 @@ Lista de los **últimos 100 cambios** hechos en el panel (precios, stock, gustos
 > 💡 Cada tarea tiene su espacio de video. Pegá el link al lado del 🎥 cuando tengas el video grabado.
 
 ### ✏️ Cambiar un precio
-1. Entrá a **Sabores**, **Cafetería** o **Postres** según el producto.
+1. Entrá a **Cafetería** o **Postres** según el producto. Si es un **sabor de helado**, entrá a **Pantalla 2 - Sabores (imagen)** y abrí el desplegable **"Editar sabores"**.
 2. Tocá el **precio** del producto (a la derecha).
 3. Escribí el nuevo número y tocá el **✓** (o apretá Enter).
 4. Listo. Si el cambio es **muy grande** respecto al anterior, te va a pedir **confirmar** (para evitar errores de tipeo).
@@ -254,6 +261,17 @@ Lista de los **últimos 100 cambios** hechos en el panel (precios, stock, gustos
 
 > 🎥 **Video — Subir una placa personalizada:** `__________________________`
 
+### 🖼️ Cambiar la imagen de la Pantalla 2
+1. Entrá a **Pantalla 2 - Sabores (imagen)**.
+2. Tocá **"Subir imagen"** (o **"Reemplazar imagen"** si ya hay una) y elegí el archivo.
+3. Mirá la **previsualización**: todavía no se subió nada.
+4. Si está bien, tocá **"Confirmar y publicar"**. Si no, **"Cancelar"** y elegí otra.
+5. La pantalla del local cambia sola en unos segundos. **No hace falta tocar el televisor.**
+
+> Guardá siempre la imagen en **1920 × 1080** para que se vea nítida en el televisor.
+
+> 🎥 **Video — Cambiar la imagen de la Pantalla 2:** `__________________________`
+
 ### 🥡 Editar el Kilo Kaikén (precio y gustos)
 1. Entrá a **Postres**.
 2. Buscá **"Kilo Kaikén"**.
@@ -277,6 +295,13 @@ No. Cambiás en el panel y la pantalla se actualiza sola en pocos segundos.
 
 **¿Cómo "saco" un sabor que no tengo?**
 Marcalo **sin stock**: queda tachado en la pantalla. (No hay un botón para borrar productos del menú; el "sin stock" es la forma de ocultarlo.)
+Ojo: los sabores **ya no se muestran en la Pantalla 2**, que ahora es una imagen. Si querés sacar un sabor de **esa** pantalla, hay que editar la imagen y volver a subirla.
+
+**Cambié un sabor y en la Pantalla 2 sigue igual.**
+Es lo esperado: esa pantalla muestra **una imagen fija** que subís vos, no la lista de sabores del panel. Para que cambie, subí una imagen nueva desde **Pantalla 2 - Sabores (imagen)**.
+
+**Subí la imagen de la Pantalla 2 y se ve borrosa.**
+La imagen es más chica de lo que necesita el televisor. Volvé a exportarla en **1920 × 1080** y subila de nuevo.
 
 **Subí una placa personalizada y se ve con un borde / no llena toda la pantalla.**
 Es normal si la imagen/video no es exactamente vertical (9:16). El sistema la muestra **completa** sin recortar. Si querés que llene todo, subila en formato **vertical 1080×1920** (como una historia de Instagram).
