@@ -4,21 +4,23 @@ import { useEffect, useRef, useState, type CSSProperties } from "react";
 
 export type MediaTipo = "video" | "imagen";
 
-// El <video> NO se funde: se PRENDE Y APAGA DE GOLPE. Medido en el TV (grabación
-// de la cartelera, 2026-07-24): cada fundido de opacidad del <video> deja la
-// pantalla en NEGRO durante TODO el fundido. El plano de video por hardware del
-// TV no se mezcla con la capa HTML: mientras la opacidad está EN TRANSICIÓN el TV
-// pinta negro en esa región, y el póster que está debajo (z-index 1) no se ve a
-// través. Con 160ms de fundido salían 2 destellos negros de ~170ms por cambio de
-// placa — uno al apagar el video viejo y otro al prender el nuevo — que es
-// exactamente lo que se ve en la grabación. Con la opacidad QUIETA (0 ó 1) el
-// póster sí se ve bien: los 0.9s que tarda el TV en cargar el mp4 se ven perfectos.
-// Como el póster ES el frame 0 del video, el corte póster↔video es invisible.
+// El póster tapa al <video> DESDE ARRIBA. Medido en el TV (grabación de la
+// cartelera, 2026-07-29): con el póster DEBAJO del <video> (z-index 1) seguía
+// habiendo ~230ms de NEGRO en cada cambio de placa (t=0.20→0.43s y
+// t=10.20→10.43s del video de control). O sea: el plano de video por HARDWARE
+// del TV perfora en negro su rectángulo aunque el <video> esté en opacity 0 —
+// no alcanza con "dejar la opacidad quieta", el hueco tapa igual a todo lo que
+// tenga DEBAJO. Lo que sí se ve por encima del plano es la capa HTML (prueba:
+// el texto editable se lee perfecto sobre el video). Por eso el póster va
+// ARRIBA (z-index 2) y el <video> abajo (z-index 1): así el póster cubre el
+// hueco pase lo que pase, y NUNCA hay que animar ni apagar la opacidad del
+// <video>. Como el póster ES el frame 0 del video, el corte póster→video es
+// invisible.
 //
-// Margen (ms) entre apagar el <video> y recargarle el src: le da al compositor
-// del TV un par de frames para dejar la opacidad aplicada antes de que el plano
-// se ponga negro por la recarga.
-const APAGADO_MS = 60;
+// Margen (ms) entre poner el póster y recargarle el src al <video>: le da al
+// compositor del TV un par de frames para pintar el póster antes de que el
+// plano se ponga negro por la recarga.
+const TAPADO_MS = 60;
 
 /**
  * Motor de medios para signage en Smart TV (Tizen / WebOS / Android WebView).
@@ -33,12 +35,12 @@ const APAGADO_MS = 60;
  * HARDWARE del TV se pone NEGRO mientras decodifica, y NO se puede congelar el
  * último frame en un <canvas> (el plano de hardware no es accesible por canvas:
  * sale negro). SOLUCIÓN: un <img> "cover" con el PÓSTER (primer frame de la
- * placa, una imagen estática que SÍ renderiza sobre el plano de video del TV)
- * tapa el hueco de carga con el CONTENIDO de la placa — nunca negro. Como el
+ * placa, una imagen estática que SÍ renderiza POR ENCIMA del plano de video del
+ * TV) tapa el hueco de carga con el CONTENIDO de la placa — nunca negro. Como el
  * póster es el frame 0 del video, cuando el <video> revela y arranca en 0 el
  * cruce es invisible. NADA de esto usa fundidos: todos los cambios de capa son
- * CORTES SECOS, porque animar la opacidad del <video> pone el TV en negro (ver
- * la nota de APAGADO_MS arriba).
+ * CORTES SECOS, y la opacidad del <video> no se toca nunca (ver la nota de
+ * TAPADO_MS arriba).
  */
 export default function VideoEngine({
   src,
@@ -70,8 +72,11 @@ export default function VideoEngine({
   // a su proporción (placas personalizadas: si no es 9:16 exacto, se ve entero
   // con borde negro en vez de recortarse).
   ajuste?: "cover" | "contain";
-  // Se llama cuando el medio NUEVO ya está revelado (video pintando / imagen
-  // cargada). PantallaRotativa lo usa para recién entonces mostrar el texto.
+  // Se llama cuando el CONTENIDO de la placa nueva ya está en pantalla: con el
+  // póster pintado (que ES el frame 0 de la placa), no cuando el <video> arranca.
+  // PantallaRotativa lo usa para mostrar el texto editable. Medido en el TV: el
+  // mp4 tarda hasta 1.7s en cargar, así que atar el texto al <video> dejaba la
+  // placa 1.7s SIN precio ni título en pantalla.
   onReady?: () => void;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -141,14 +146,15 @@ export default function VideoEngine({
       };
     }
 
-    // ARQUITECTURA anti-negro: el PÓSTER (cover) es un BACKSTOP SÓLIDO e
-    // INSTANTÁNEO DEBAJO del <video> (z-index), y el <video> se prende/apaga de
-    // GOLPE por encima: el viejo se apaga (opacity 1→0) revelando el póster
-    // sólido, el nuevo se prende (0→1) tapando el póster. Ninguna de las dos
-    // capas se funde NUNCA. Ese era el bug: los 160ms de fundido del <video>
-    // eran 160ms de pantalla negra en el TV (dos por cambio de placa), porque el
-    // plano de video por hardware no se mezcla con el HTML mientras la opacidad
-    // está en transición y tapa en negro al póster que tiene debajo.
+    // ARQUITECTURA anti-negro: el PÓSTER (cover) TAPA DESDE ARRIBA (z-index 2)
+    // y el <video> vive abajo (z-index 1) con la opacidad SIEMPRE en 1. La
+    // transición es: póster ON (de golpe, tapa la placa vieja) → recargar el src
+    // del video debajo → cuando el video ya pinta, póster OFF (de golpe, revela
+    // el video en el frame 0 = mismo pixel que el póster). El <video> nunca
+    // cambia de opacidad, así que su plano de hardware nunca queda al aire.
+    // Ese era el bug medido el 2026-07-29: con el póster DEBAJO, el hueco negro
+    // que perfora el plano del TV mientras recarga tapaba al póster igual, y
+    // salían ~230ms de negro por cambio de placa.
 
     const cargar = () => {
       if (cancel) return;
@@ -162,7 +168,7 @@ export default function VideoEngine({
         if (listo || cancel) return;
         listo = true;
         // Arrancar desde 0 y REPRODUCIR (el video empuja frames al plano). El
-        // video sigue en opacity 0, tapado por el póster.
+        // video está tapado por el póster mientras tanto.
         try {
           video.currentTime = 0;
         } catch {
@@ -172,41 +178,40 @@ export default function VideoEngine({
         if (p && typeof p.catch === "function") p.catch(() => {});
 
         // Cuando el video está PINTANDO ('timeupdate' = avanzó el tiempo = hay
-        // frames en el plano), prenderlo DE GOLPE sobre el póster. Como el video
-        // sólo se movió unos frames desde 0 y el póster ES el frame 0, el corte
+        // frames en el plano), sacar el póster DE GOLPE. Como el video sólo se
+        // movió unos frames desde 0 y el póster ES el frame 0, el corte
         // póster→video es invisible. Esperar a 'timeupdate' es lo que evita
-        // prender un plano todavía negro.
-        //
-        // El póster NO se apaga: queda como BACKSTOP SÓLIDO PERMANENTE debajo del
-        // <video> (z-index 1). El video, opaco, lo tapa mientras pinta bien; si el
-        // plano de video del TV parpadea negro en cualquier momento (durante la
-        // animación de entrada o al reiniciar el loop), asoma el póster de ESTA
-        // placa en vez del negro. Se re-apunta al póster nuevo en cada transición
-        // (arrancar()), así siempre coincide con la placa en pantalla.
-        let prendido = false;
-        const prender = () => {
-          if (prendido || cancel) return;
-          prendido = true;
-          video.removeEventListener("timeupdate", prender);
-          video.style.opacity = "1";
-          onReadyRef.current?.();
+        // destapar un plano todavía negro.
+        let destapado = false;
+        const destapar = () => {
+          if (destapado || cancel) return;
+          destapado = true;
+          video.removeEventListener("timeupdate", destapar);
+          if (poster) cover.style.opacity = "0";
+          else onReadyRef.current?.(); // sin póster, el texto entra recién acá
         };
-        video.addEventListener("timeupdate", prender);
-        // Fallback: si no llega 'timeupdate', prender igual tras un margen corto.
-        timers.push(setTimeout(prender, 300));
+        video.addEventListener("timeupdate", destapar);
+        // Fallback largo a propósito: si 'timeupdate' no llega, el video está
+        // trabado y quedarse con el póster (frame 0, placa completa y quieta) es
+        // MUCHO mejor que destapar el plano en negro.
+        timers.push(setTimeout(destapar, 1000));
       };
       video.addEventListener("canplay", revelar, { once: true });
       video.addEventListener("loadeddata", revelar, { once: true });
       timers.push(setTimeout(revelar, 1500)); // por si no llegan eventos
     };
 
-    // Arranca la transición: pone el póster SÓLIDO (backstop), apaga el video
-    // viejo de golpe y, un par de frames después, le recarga el src.
+    // Arranca la transición: sube el póster de la placa NUEVA por encima de todo
+    // y, un par de frames después, recarga el src del video debajo.
     const arrancar = () => {
       if (cancel) return;
-      cover.style.opacity = "1"; // backstop sólido (instantáneo)
-      video.style.opacity = "0"; // apaga el video viejo DE GOLPE (sin fundido)
-      timers.push(setTimeout(cargar, primeraVez ? 0 : APAGADO_MS));
+      cover.style.opacity = "1"; // tapa de golpe (instantáneo, sin fundido)
+      video.style.opacity = "1"; // por si venía de una placa tipo "imagen"
+      // El contenido de la placa nueva YA está en pantalla (el póster es su
+      // frame 0): avisar acá para que el texto editable entre junto con él, en
+      // vez de esperar el hasta-1.7s que tarda el TV en cargar el mp4.
+      onReadyRef.current?.();
+      timers.push(setTimeout(cargar, primeraVez ? 0 : TAPADO_MS));
     };
 
     if (poster) {
@@ -230,9 +235,10 @@ export default function VideoEngine({
         );
       }
     } else {
-      // Sin póster (personalizada sin póster): no hay backstop → degradado.
+      // Sin póster (personalizada sin póster): no hay con qué tapar el hueco de
+      // carga del plano → se ve el negro del contenedor. Modo degradado.
       cover.style.opacity = "0";
-      if (!primeraVez) video.style.opacity = "0";
+      video.style.opacity = "1";
       cargar();
     }
 
@@ -266,36 +272,38 @@ export default function VideoEngine({
       {/* Wrapper que rota el medio (solo personalizadas verticales). Video +
           cover van DENTRO, así giran juntos sin desfasarse. */}
       <div style={rotadorStyle}>
-        {/* Video ARRIBA (z-index 2). Su opacidad la controla el effect: se funde
-            a 0 mientras el plano se blanquea (recarga) y vuelve a 1 cuando el
-            video nuevo ya está pintando. Sin autoPlay: el play lo maneja el
-            effect para arrancar la animación desde 0. */}
+        {/* Video ABAJO (z-index 1) y con la opacidad SIEMPRE en 1: el effect no
+            se la toca nunca. Quien tapa/destapa es el póster de arriba. Sin
+            autoPlay: el play lo maneja el effect para arrancar la animación
+            desde 0. */}
         <video
           ref={videoRef}
           muted loop playsInline preload="auto"
           style={{
             ...mediaStyle,
-            zIndex: 2,
+            zIndex: 1,
             opacity: 1,
             // SIN transición a propósito: fundir esta capa pone el TV en negro
-            // durante todo el fundido (ver nota de APAGADO_MS).
+            // durante todo el fundido (ver nota de TAPADO_MS).
             transition: "none",
           }}
         />
-        {/* Póster BACKSTOP, DEBAJO del video (z-index 1). Se prende de golpe
-            (sin transición) al arrancar la transición y NO se apaga: queda como
-            backstop sólido permanente. El video, opaco, lo tapa cuando pinta; si
-            el plano del TV se blanquea (entrada del video o reinicio del loop),
-            asoma el póster de la placa actual en vez del negro del contenedor. */}
+        {/* Póster ENCIMA del video (z-index 2). Es la única capa que se prende y
+            apaga, siempre DE GOLPE (sin transición): tapa mientras el <video> de
+            abajo recarga el src —momento en que el plano de hardware del TV
+            perfora en negro— y se saca cuando el video ya está pintando. Al ir
+            ARRIBA, ese hueco negro no lo puede tapar (a diferencia de cuando
+            estaba debajo, que es lo que dejaba ~230ms de negro por cambio). */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           ref={coverRef}
           alt=""
           style={{
             ...mediaStyle,
-            zIndex: 1,
+            zIndex: 2,
             opacity: 0,
             pointerEvents: "none",
+            transition: "none",
           }}
         />
       </div>

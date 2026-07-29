@@ -56,8 +56,10 @@ export default function PantallaRotativa({ datos, videoLayer, rotacion = 0, vp }
 
   // El índice MOSTRADO (overlay de texto + placa visible) va un paso atrás del
   // índice por reloj: solo avanza cuando el VideoEngine avisa (onReady) que el
-  // video nuevo ya está revelado. Así el texto editable nunca aparece sobre
-  // negro mientras la placa siguiente todavía carga — entran sincronizados.
+  // contenido de la placa nueva ya está en pantalla — o sea cuando su PÓSTER
+  // está pintado, no cuando el <video> arranca. Así el texto editable nunca
+  // aparece sobre negro y tampoco llega tarde: atarlo al <video> dejaba la placa
+  // 1.7s sin precio ni título (medido en el TV, 2026-07-29).
   const [indiceMostrado, setIndiceMostrado] = useState(indice);
 
   useEffect(() => {
@@ -181,17 +183,17 @@ export default function PantallaRotativa({ datos, videoLayer, rotacion = 0, vp }
   // personalizadas son verticales sin hornear → se rotan con la pantalla.
   const rotarMedia: 0 | 90 | -90 = objetivo.kind === "pers" ? rotacion : 0;
 
-  // Overlay del item MOSTRADO (no del objetivo): aparece recién cuando el video
-  // nuevo está revelado (ver onReady), nunca sobre negro. Mientras carga la
-  // próxima (objetivo ≠ mostrado), el texto viejo se va rápido en vez de quedar
-  // colgado sobre el negro de carga.
+  // Overlay del item MOSTRADO (no del objetivo): aparece recién cuando la placa
+  // nueva ya está en pantalla (ver onReady), nunca sobre negro. Mientras tanto
+  // (objetivo ≠ mostrado), el texto viejo se va rápido en vez de quedar colgado
+  // sobre la placa que entra.
   const overlay = buildOverlay(mostrado);
   const transicionando = idxObjetivo !== idxMostrado;
 
   // El <video> persistente se renderiza en la capa full-screen de atrás (portal),
   // así llena la pantalla 16:9 sin recortarse contra el marco 9:16. Si no hay
-  // capa (SSR / horizontal), se renderiza inline como fallback. Cuando el medio
-  // objetivo se revela, avanzamos el índice mostrado → el texto entra en sync.
+  // capa (SSR / horizontal), se renderiza inline como fallback. Cuando la placa
+  // objetivo aparece, avanzamos el índice mostrado → el texto entra en sync.
   const motor = (
     <VideoEngine
       src={src}
