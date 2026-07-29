@@ -172,10 +172,27 @@ export default function PantallaRotativa({ datos, videoLayer, rotacion = 0, vp }
       });
   }, [clavePosters]);
 
+  // El próximo mp4 ENTERO en memoria (blob:) para que el <video> no toque la red
+  // al cambiar de placa. Calentar el cache HTTP no alcanzaba: la TV igual tardaba
+  // hasta 1.5s en abrir el archivo y en ese rato se veía el póster CONGELADO —
+  // que en varias placas es el frame 0, casi vacío (los gráficos entran animados
+  // después). Resultado en el TV: placa en blanco con el precio flotando, justo
+  // lo que el cliente describe como "trabado" (grabación 2026-07-29). Con el blob
+  // el <video> abre de memoria y la animación de entrada arranca casi al toque.
+  const blobsRef = useRef<Map<string, string>>(new Map());
+  const [, refrescar] = useState(0);
   useEffect(() => {
     const c = new AbortController();
-    // Video: calentar el cache HTTP (no un 2º <video>, saturaría el decoder).
-    if (proxSrc) fetch(proxSrc, { signal: c.signal }).catch(() => {});
+    if (proxSrc && !blobsRef.current.has(proxSrc)) {
+      fetch(proxSrc, { signal: c.signal })
+        .then((r) => (r.ok ? r.blob() : null))
+        .then((b) => {
+          if (!b || c.signal.aborted || blobsRef.current.has(proxSrc)) return;
+          blobsRef.current.set(proxSrc, URL.createObjectURL(b));
+          refrescar((n) => n + 1); // que el VideoEngine reciba el blob ya listo
+        })
+        .catch(() => {});
+    }
     // Póster: además de bajarlo, DECODIFICARLO en background con un Image(). Así
     // en la próxima transición el cover ya está pintado y tapa el hueco de carga
     // del <video> al instante — sin parpadeo negro.
@@ -186,6 +203,17 @@ export default function PantallaRotativa({ datos, videoLayer, rotacion = 0, vp }
     }
     return () => c.abort();
   }, [proxSrc, proxPoster]);
+
+  // Liberar los blobs que ya no son ni la placa actual ni la próxima: en el TV la
+  // memoria es escasa y son 13 videos por vuelta.
+  const srcActual = len ? srcDe(items[idxObjetivo]) : "";
+  useEffect(() => {
+    blobsRef.current.forEach((objectUrl, url) => {
+      if (url === srcActual || url === proxSrc) return;
+      URL.revokeObjectURL(objectUrl);
+      blobsRef.current.delete(url);
+    });
+  }, [srcActual, proxSrc]);
 
   if (len === 0) {
     return <div style={{ width: "100%", height: "100%", backgroundColor: "#000" }} />;
@@ -218,6 +246,8 @@ export default function PantallaRotativa({ datos, videoLayer, rotacion = 0, vp }
   const motor = (
     <VideoEngine
       src={src}
+      // Si ya lo bajamos entero, el <video> abre el blob de memoria (sin red).
+      mediaSrc={blobsRef.current.get(src) ?? src}
       tipo={tipo}
       poster={poster}
       rotar={rotarMedia}

@@ -1,4 +1,4 @@
-const CACHE_VERSION = "v20";
+const CACHE_VERSION = "v21";
 const CACHE_STATIC = `kaiken-static-${CACHE_VERSION}`;
 const CACHE_PAGES = `kaiken-pages-${CACHE_VERSION}`;
 const ALL_CACHES = [CACHE_STATIC, CACHE_PAGES];
@@ -62,6 +62,31 @@ self.addEventListener("fetch", (event) => {
   // (Los .mp4 NO se cachean acá: las Smart TV los piden con Range y devolverles
   // una respuesta 200 completa desde el cache rompe la reproducción.)
   if (url.pathname.startsWith("/placas/posters/")) {
+    event.respondWith(
+      caches.match(request).then(
+        (cached) =>
+          cached ??
+          fetch(request).then((res) => {
+            const copia = res.clone();
+            caches
+              .open(CACHE_STATIC)
+              .then((c) => c.put(request, copia))
+              .catch(() => {});
+            return res;
+          })
+      )
+    );
+    return;
+  }
+
+  // Videos de las placas fijas: cache-first, pero SOLO para pedidos sin Range.
+  // PantallaRotativa los baja con fetch() entero (sin Range) y se los pasa al
+  // <video> como blob:, así que el camino normal se sirve del cache y la placa
+  // arranca sin ir a la red. Si algún día cae en el camino viejo (video.src con
+  // la URL), el <video> pide con Range y ahí NO tocamos nada: devolverle un 200
+  // completo desde el cache rompe la reproducción en Smart TV.
+  if (url.pathname.startsWith("/placas/") && url.pathname.endsWith(".mp4")) {
+    if (request.headers.get("range")) return;
     event.respondWith(
       caches.match(request).then(
         (cached) =>

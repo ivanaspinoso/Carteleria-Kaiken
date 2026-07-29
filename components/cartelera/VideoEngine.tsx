@@ -44,6 +44,7 @@ const TAPADO_MS = 60;
  */
 export default function VideoEngine({
   src,
+  mediaSrc,
   tipo,
   poster,
   rotar = 0,
@@ -52,6 +53,12 @@ export default function VideoEngine({
   onReady,
 }: {
   src: string;
+  // De dónde CARGA el medio, si es distinto de `src`. PantallaRotativa baja el
+  // próximo mp4 entero a memoria y pasa acá su blob: URL, así el <video> no
+  // toca la red al cambiar de placa (era hasta 1.5s con el póster congelado en
+  // pantalla). `src` sigue siendo la identidad lógica de la placa: si el blob
+  // llega tarde, cambia `mediaSrc` pero NO se recarga el video a mitad de placa.
+  mediaSrc?: string;
   tipo: MediaTipo;
   // Primer frame del medio (imagen estática) para tapar el hueco de carga del
   // <video> sin que aparezca negro. Si falta, se carga directo (puede haber un
@@ -72,11 +79,13 @@ export default function VideoEngine({
   // a su proporción (placas personalizadas: si no es 9:16 exacto, se ve entero
   // con borde negro en vez de recortarse).
   ajuste?: "cover" | "contain";
-  // Se llama cuando el CONTENIDO de la placa nueva ya está en pantalla: con el
-  // póster pintado (que ES el frame 0 de la placa), no cuando el <video> arranca.
-  // PantallaRotativa lo usa para mostrar el texto editable. Medido en el TV: el
-  // mp4 tarda hasta 1.7s en cargar, así que atar el texto al <video> dejaba la
-  // placa 1.7s SIN precio ni título en pantalla.
+  // Se llama cuando la placa nueva está VIVA en pantalla: el <video> ya está
+  // pintando su animación de entrada. PantallaRotativa lo usa para meter el texto
+  // editable, así entra JUNTO con los gráficos. Antes se avisaba con el póster
+  // (frame 0), pero el frame 0 de varias placas está casi VACÍO — el título y el
+  // producto entran animados después — y se veía la placa en blanco con el precio
+  // flotando 1.5s (grabación del cliente, 2026-07-29). Igual hay un fallback por
+  // tiempo: si el video no arranca, el texto entra solo para no perderlo.
   onReady?: () => void;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -86,6 +95,11 @@ export default function VideoEngine({
   // Ref siempre fresca para no re-disparar el effect de carga al cambiar onReady.
   const onReadyRef = useRef(onReady);
   onReadyRef.current = onReady;
+
+  // Ídem con la URL de carga: si el blob del próximo video llega tarde, se usa en
+  // la PRÓXIMA transición, sin recargar el <video> a mitad de placa.
+  const mediaSrcRef = useRef(mediaSrc);
+  mediaSrcRef.current = mediaSrc;
 
   const mediaStyle: CSSProperties = {
     position: "absolute",
@@ -126,8 +140,21 @@ export default function VideoEngine({
     srcRef.current = src;
 
     let cancel = false;
+    // ¿Este pase llegó a cargarle el src al <video>? Si se cancela ANTES (React
+    // monta-desmonta-remonta los efectos en dev, y Fast Refresh también), hay que
+    // soltar srcRef: si no, el pase siguiente ve el mismo src, sale por el early
+    // return y la placa se queda en el póster hasta el próximo cambio de reloj.
+    let cargado = false;
     const timers: ReturnType<typeof setTimeout>[] = [];
     const rafs: number[] = [];
+
+    // El texto editable entra UNA sola vez por placa, y con los gráficos vivos.
+    let avisado = false;
+    const avisarListo = () => {
+      if (avisado || cancel) return;
+      avisado = true;
+      onReadyRef.current?.();
+    };
 
     // Espera a que un <img> tenga PÍXELES USABLES: bajado (load) y decodificado
     // (decode). Resuelve igual si falla — nunca deja la rotación colgada.
@@ -161,7 +188,7 @@ export default function VideoEngine({
       } catch {
         /* noop */
       }
-      onReadyRef.current?.();
+      avisarListo();
       return () => {
         cancel = true;
         timers.forEach(clearTimeout);
@@ -180,9 +207,11 @@ export default function VideoEngine({
 
     const cargar = () => {
       if (cancel) return;
+      cargado = true;
       video.muted = true;
       video.setAttribute("muted", "");
-      video.src = src;
+      // Blob en memoria si PantallaRotativa alcanzó a bajarlo; si no, la URL.
+      video.src = mediaSrcRef.current || src;
       video.load();
 
       let listo = false;
@@ -210,10 +239,23 @@ export default function VideoEngine({
           destapado = true;
           video.removeEventListener("timeupdate", destapar);
           if (poster) cover.style.opacity = "0";
-          else onReadyRef.current?.(); // sin póster, el texto entra recién acá
+          // Los gráficos de la placa están VIVOS (animación de entrada corriendo):
+          // recién ahora entra el texto editable, para que no quede flotando sobre
+          // una placa a medio dibujar.
+          avisarListo();
         };
+        // Señal preferida: requestVideoFrameCallback dispara en el frame EXACTO
+        // en que el video presenta imagen (Chromium 83+, o sea Tizen 7/8 de P1/P5).
+        // 'timeupdate' sirve de respaldo pero llega cada ~250ms: destapar con eso
+        // se comía un pedazo de la animación de entrada y se notaba como salto.
+        const conFrame = (
+          video as HTMLVideoElement & {
+            requestVideoFrameCallback?: (cb: () => void) => number;
+          }
+        ).requestVideoFrameCallback;
+        if (typeof conFrame === "function") conFrame.call(video, destapar);
         video.addEventListener("timeupdate", destapar);
-        // Fallback largo a propósito: si 'timeupdate' no llega, el video está
+        // Fallback largo a propósito: si no llega ninguna señal, el video está
         // trabado y quedarse con el póster (frame 0, placa completa y quieta) es
         // MUCHO mejor que destapar el plano en negro.
         timers.push(setTimeout(destapar, 1000));
@@ -229,10 +271,10 @@ export default function VideoEngine({
       if (cancel) return;
       cover.style.opacity = "1"; // tapa de golpe (instantáneo, sin fundido)
       video.style.opacity = "1"; // por si venía de una placa tipo "imagen"
-      // El contenido de la placa nueva YA está en pantalla (el póster es su
-      // frame 0): avisar acá para que el texto editable entre junto con él, en
-      // vez de esperar el hasta-1.7s que tarda el TV en cargar el mp4.
-      onReadyRef.current?.();
+      // Red de seguridad del texto: si el <video> no llega a pintar (mp4 trabado),
+      // el texto entra igual a los 900ms para que la placa no quede sin precio.
+      // El camino normal es que lo dispare `destapar`, con los gráficos ya vivos.
+      timers.push(setTimeout(avisarListo, 900));
       // DOS frames de compositor con el póster ya visible ANTES de tocar el
       // <video>. Sin esto, subir la opacidad y recargar el src caen en el mismo
       // frame: el plano de hardware se perfora en negro antes de que el póster
@@ -309,6 +351,7 @@ export default function VideoEngine({
 
     return () => {
       cancel = true;
+      if (!cargado) srcRef.current = null;
       timers.forEach(clearTimeout);
       rafs.forEach(cancelAnimationFrame);
     };
