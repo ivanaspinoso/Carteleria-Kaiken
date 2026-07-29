@@ -127,6 +127,28 @@ export default function VideoEngine({
 
     let cancel = false;
     const timers: ReturnType<typeof setTimeout>[] = [];
+    const rafs: number[] = [];
+
+    // Espera a que un <img> tenga PÍXELES USABLES: bajado (load) y decodificado
+    // (decode). Resuelve igual si falla — nunca deja la rotación colgada.
+    const conPixeles = (img: HTMLImageElement) =>
+      new Promise<void>((resolve) => {
+        const decodificar = () => {
+          if (typeof img.decode === "function") img.decode().then(() => resolve(), () => resolve());
+          else resolve();
+        };
+        if (img.complete && img.naturalWidth > 0) {
+          decodificar();
+          return;
+        }
+        const fin = () => {
+          img.removeEventListener("load", fin);
+          img.removeEventListener("error", fin);
+          decodificar();
+        };
+        img.addEventListener("load", fin);
+        img.addEventListener("error", fin);
+      });
 
     // Imagen (placa personalizada tipo imagen): pintar en el cover, ocultar el
     // video (opacity 0) y pausarlo (libera el decoder).
@@ -211,7 +233,26 @@ export default function VideoEngine({
       // frame 0): avisar acá para que el texto editable entre junto con él, en
       // vez de esperar el hasta-1.7s que tarda el TV en cargar el mp4.
       onReadyRef.current?.();
-      timers.push(setTimeout(cargar, primeraVez ? 0 : TAPADO_MS));
+      // DOS frames de compositor con el póster ya visible ANTES de tocar el
+      // <video>. Sin esto, subir la opacidad y recargar el src caen en el mismo
+      // frame: el plano de hardware se perfora en negro antes de que el póster
+      // llegue a pintarse y se ve el negro con el texto viejo flotando encima
+      // (medido en el TV el 2026-07-29 con revisionkaiken.mp4, frames t=2.40 y
+      // t=2.60). El setTimeout solo NO alcanza: cuenta tiempo, no frames.
+      const dosFrames = () => {
+        if (cancel) return;
+        rafs.push(
+          requestAnimationFrame(() => {
+            if (cancel) return;
+            rafs.push(
+              requestAnimationFrame(() => {
+                timers.push(setTimeout(cargar, primeraVez ? 0 : TAPADO_MS));
+              })
+            );
+          })
+        );
+      };
+      dosFrames();
     };
 
     if (poster) {
@@ -227,26 +268,37 @@ export default function VideoEngine({
       // Mientras esperamos NO se toca nada: la placa vieja sigue reproduciendo en
       // loop. Quedarse un instante de más en la placa anterior es infinitamente
       // mejor que un flash negro.
-      const precargar = new Image();
+      //
+      // Son DOS esperas, y hacen falta las dos:
+      //  1. una Image() aparte → garantiza que el JPG está BAJADO y decodificado
+      //     (mata la espera de red, que era el negro de la 1ª transición);
+      //  2. el <img> del DOM con ese mismo src → garantiza que ESE elemento ya
+      //     tiene los píxeles. Saltarse esta segunda fue la regresión medida en
+      //     revisionkaiken.mp4: el bitmap estaba en cache pero el cover todavía
+      //     no lo había pintado cuando se recargaba el <video> → negro en TODAS
+      //     las transiciones, no solo en la primera.
       let arrancado = false;
       const arrancarUnaVez = () => {
         if (arrancado || cancel) return;
         arrancado = true;
-        cover.src = poster;
         arrancar();
       };
+      const precargar = new Image();
       precargar.src = poster;
-      if (precargar.complete && precargar.naturalWidth > 0) {
-        arrancarUnaVez();
-      } else if (typeof precargar.decode === "function") {
-        precargar.decode().then(arrancarUnaVez, arrancarUnaVez);
-      } else {
-        precargar.addEventListener("load", arrancarUnaVez, { once: true });
-        precargar.addEventListener("error", arrancarUnaVez, { once: true });
-      }
+      conPixeles(precargar).then(() => {
+        if (cancel || arrancado) return;
+        cover.src = poster; // ya en cache: el <img> del DOM lo toma sin red
+        return conPixeles(cover).then(arrancarUnaVez);
+      });
       // Fallback largo (la red del TV puede ser lenta): si el póster no llegó,
       // seguir igual — la rotación no se puede quedar clavada para siempre.
-      timers.push(setTimeout(arrancarUnaVez, 3000));
+      timers.push(
+        setTimeout(() => {
+          if (arrancado || cancel) return;
+          cover.src = poster; // último intento: mejor un cover a medio pintar que nada
+          arrancarUnaVez();
+        }, 3000)
+      );
     } else {
       // Sin póster (personalizada sin póster): no hay con qué tapar el hueco de
       // carga del plano → se ve el negro del contenedor. Modo degradado.
@@ -258,6 +310,7 @@ export default function VideoEngine({
     return () => {
       cancel = true;
       timers.forEach(clearTimeout);
+      rafs.forEach(cancelAnimationFrame);
     };
   }, [src, tipo, poster]);
 
