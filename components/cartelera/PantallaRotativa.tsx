@@ -151,6 +151,27 @@ export default function PantallaRotativa({ datos, videoLayer, rotacion = 0, vp }
   const prox = len ? items[(idxObjetivo + 1) % len] : null;
   const proxSrc = prox ? srcDe(prox) : "";
   const proxPoster = prox ? posterDe(prox) : undefined;
+
+  // PRECARGA DE TODOS LOS PÓSTERES apenas monta la pantalla (son JPG chicos, ~13).
+  // El prefetch de "el próximo" no alcanzaba en la PRIMERA transición: si la
+  // página carga a mitad de una placa, el póster de la siguiente tiene apenas
+  // 1-2s para bajar mientras el TV también baja el HTML y el primer mp4 → llegaba
+  // tarde y se colaba el negro (medido 2026-07-29). Bajándolos y DECODIFICÁNDOLOS
+  // todos de una, cualquier transición encuentra su cover ya listo.
+  const postersRef = useRef<HTMLImageElement[]>([]);
+  const clavePosters = items.map((i) => posterDe(i) ?? "").join("|");
+  useEffect(() => {
+    postersRef.current = clavePosters
+      .split("|")
+      .filter(Boolean)
+      .map((url) => {
+        const img = new Image();
+        img.src = url;
+        if (typeof img.decode === "function") img.decode().catch(() => {});
+        return img; // guardado en la ref: evita que el GC lo tire antes de decodificar
+      });
+  }, [clavePosters]);
+
   useEffect(() => {
     const c = new AbortController();
     // Video: calentar el cache HTTP (no un 2º <video>, saturaría el decoder).

@@ -1,4 +1,4 @@
-const CACHE_VERSION = "v18";
+const CACHE_VERSION = "v19";
 const CACHE_STATIC = `kaiken-static-${CACHE_VERSION}`;
 const CACHE_PAGES = `kaiken-pages-${CACHE_VERSION}`;
 const ALL_CACHES = [CACHE_STATIC, CACHE_PAGES];
@@ -42,6 +42,31 @@ self.addEventListener("fetch", (event) => {
           fetch(request).then((res) => {
             // Clonar YA (sincrónico), antes de devolver `res`: si se clona
             // dentro del .then async, el body ya está en uso y falla.
+            const copia = res.clone();
+            caches
+              .open(CACHE_STATIC)
+              .then((c) => c.put(request, copia))
+              .catch(() => {});
+            return res;
+          })
+      )
+    );
+    return;
+  }
+
+  // Pósters de las placas: cache-first. Son el backstop que tapa el hueco negro
+  // que perfora el plano de video del TV mientras el <video> recarga el src. Si
+  // dependen de la red, en la PRIMERA transición después de cargar la página el
+  // póster llega tarde y se ve el negro (medido 2026-07-29). Cacheados, cualquier
+  // transición los tiene al instante. Se invalidan al bumpear CACHE_VERSION.
+  // (Los .mp4 NO se cachean acá: las Smart TV los piden con Range y devolverles
+  // una respuesta 200 completa desde el cache rompe la reproducción.)
+  if (url.pathname.startsWith("/placas/posters/")) {
+    event.respondWith(
+      caches.match(request).then(
+        (cached) =>
+          cached ??
+          fetch(request).then((res) => {
             const copia = res.clone();
             caches
               .open(CACHE_STATIC)

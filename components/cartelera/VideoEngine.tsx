@@ -215,25 +215,38 @@ export default function VideoEngine({
     };
 
     if (poster) {
-      cover.src = poster;
-      // Fundir el video viejo recién cuando el póster esté PINTADO (backstop
-      // sólido de verdad); si no, se revelaría un cover todavía en blanco.
-      if (cover.complete && cover.naturalWidth > 0) {
+      // El póster tiene que estar DECODIFICADO antes de taparlo con él y, sobre
+      // todo, antes de recargarle el src al <video> de abajo. Si se sube un cover
+      // todavía sin píxeles, el hueco negro que perfora el plano de hardware del
+      // TV se ve a través → eso es el negro de ~300ms que aparecía SOLO en la
+      // primera transición (medido 2026-07-29): a los ~1.3s de cargar la página
+      // el póster de la 2ª placa todavía venía bajando (compitiendo con el HTML y
+      // el 1er mp4) y el fallback de 600ms arrancaba igual. En las transiciones
+      // siguientes el prefetch tiene 10s de ventaja y nunca fallaba.
+      //
+      // Mientras esperamos NO se toca nada: la placa vieja sigue reproduciendo en
+      // loop. Quedarse un instante de más en la placa anterior es infinitamente
+      // mejor que un flash negro.
+      const precargar = new Image();
+      let arrancado = false;
+      const arrancarUnaVez = () => {
+        if (arrancado || cancel) return;
+        arrancado = true;
+        cover.src = poster;
         arrancar();
+      };
+      precargar.src = poster;
+      if (precargar.complete && precargar.naturalWidth > 0) {
+        arrancarUnaVez();
+      } else if (typeof precargar.decode === "function") {
+        precargar.decode().then(arrancarUnaVez, arrancarUnaVez);
       } else {
-        const alCargarCover = () => {
-          cover.removeEventListener("load", alCargarCover);
-          arrancar();
-        };
-        cover.addEventListener("load", alCargarCover, { once: true });
-        // Fallback: si el 'load' no llega, no bloquear la rotación para siempre.
-        timers.push(
-          setTimeout(() => {
-            cover.removeEventListener("load", alCargarCover);
-            arrancar();
-          }, 600)
-        );
+        precargar.addEventListener("load", arrancarUnaVez, { once: true });
+        precargar.addEventListener("error", arrancarUnaVez, { once: true });
       }
+      // Fallback largo (la red del TV puede ser lenta): si el póster no llegó,
+      // seguir igual — la rotación no se puede quedar clavada para siempre.
+      timers.push(setTimeout(arrancarUnaVez, 3000));
     } else {
       // Sin póster (personalizada sin póster): no hay con qué tapar el hueco de
       // carga del plano → se ve el negro del contenedor. Modo degradado.
