@@ -110,5 +110,8 @@ function traducirError(msg: string): string {
     return "Confirmá tu email antes de ingresar";
   if (msg.includes("Too many requests"))
     return "Demasiados intentos, esperá unos minutos";
-  return "Error al ingresar, intentá de nuevo";
+  // Cualquier otra cosa (API key inválida, proyecto caído, red) se muestra tal
+  // cual: sin el texto original no hay forma de distinguir "la contraseña está
+  // mal" de "el panel no puede hablar con Supabase", que se arreglan distinto.
+  return `Error al ingresar: ${msg}`;
 }

@@ -255,6 +255,7 @@ export default function PantallaRotativa({ datos, videoLayer, rotacion = 0, vp }
       // Personalizadas: contain (se ven completas, sin recortar aunque no sean
       // 9:16 exacto). Fijas: cover (ya son 9:16 y llenan la pantalla).
       ajuste={objetivo.kind === "pers" ? "contain" : "cover"}
+      duracion={objetivo.duracion}
       onReady={() => setIndiceMostrado(indice)}
     />
   );

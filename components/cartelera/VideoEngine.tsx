@@ -50,6 +50,7 @@ export default function VideoEngine({
   rotar = 0,
   vp,
   ajuste = "cover",
+  duracion,
   onReady,
 }: {
   src: string;
@@ -79,6 +80,12 @@ export default function VideoEngine({
   // a su proporción (placas personalizadas: si no es 9:16 exacto, se ve entero
   // con borde negro en vez de recortarse).
   ajuste?: "cover" | "contain";
+  // Cuánto dura la placa en pantalla (segundos). Sirve para decidir si el video
+  // REPITE o se queda quieto en su último cuadro al terminar: los mp4 fijos duran
+  // exactamente lo mismo que la placa, así que con `loop` volvían a empezar unos
+  // milisegundos antes del cambio y se veía la placa VACIARSE y re-animarse justo
+  // antes de irse (visible en la grabación del cliente, kaiken30.mp4 t≈41.9).
+  duracion?: number;
   // Se llama cuando la placa nueva está VIVA en pantalla: el <video> ya está
   // pintando su animación de entrada. PantallaRotativa lo usa para meter el texto
   // editable, así entra JUNTO con los gráficos. Antes se avisaba con el póster
@@ -100,6 +107,9 @@ export default function VideoEngine({
   // la PRÓXIMA transición, sin recargar el <video> a mitad de placa.
   const mediaSrcRef = useRef(mediaSrc);
   mediaSrcRef.current = mediaSrc;
+
+  const duracionRef = useRef(duracion);
+  duracionRef.current = duracion;
 
   const mediaStyle: CSSProperties = {
     position: "absolute",
@@ -227,6 +237,28 @@ export default function VideoEngine({
         }
         const p = video.play();
         if (p && typeof p.catch === "function") p.catch(() => {});
+
+        // Al terminar: repetir SOLO si todavía queda un rato de placa. Los mp4
+        // fijos duran lo mismo que la placa, así que acá el video se queda quieto
+        // en su último cuadro (la placa completa) hasta el corte, en vez de
+        // vaciarse y re-animarse los últimos milisegundos. Un video más corto que
+        // la placa (personalizadas) sí vuelve a empezar.
+        const revelado = Date.now();
+        const alTerminar = () => {
+          if (cancel) return;
+          const dur = duracionRef.current;
+          const restante = dur ? dur * 1000 - (Date.now() - revelado) : 0;
+          if (restante > 1200) {
+            try {
+              video.currentTime = 0;
+            } catch {
+              /* noop */
+            }
+            const p2 = video.play();
+            if (p2 && typeof p2.catch === "function") p2.catch(() => {});
+          }
+        };
+        video.addEventListener("ended", alTerminar);
 
         // Cuando el video está PINTANDO ('timeupdate' = avanzó el tiempo = hay
         // frames en el plano), sacar el póster DE GOLPE. Como el video sólo se
@@ -357,23 +389,48 @@ export default function VideoEngine({
     };
   }, [src, tipo, poster]);
 
-  // Diagnóstico EN PANTALLA (abrir con ?diag=1): estado real del <video>.
+  // Diagnóstico EN PANTALLA (abrir con ?diag=1): estado real del <video> más un
+  // REGISTRO de los últimos eventos con su hora. Filmar la TV con ?diag=1 y leer
+  // este registro es la única forma de saber qué pasa allá: el destello negro no
+  // se reproduce en Chromium de escritorio.
   const [diag, setDiag] = useState<string | null>(null);
   useEffect(() => {
     if (typeof window === "undefined") return;
     if (new URLSearchParams(window.location.search).get("diag") !== "1") return;
+    const v = videoRef.current;
+    const cover = coverRef.current;
+    if (!v || !cover) return;
+
+    const registro: string[] = [];
+    const hora = () => new Date().toTimeString().slice(3, 8) + "." + String(Date.now() % 1000).padStart(3, "0");
+    const anotar = (que: string) => {
+      registro.push(`${hora()} ${que} t=${v.currentTime.toFixed(1)}`);
+      if (registro.length > 7) registro.shift();
+    };
+    const eventos = ["loadstart", "playing", "ended", "waiting", "stalled", "error"];
+    const manejadores = eventos.map((e) => {
+      const h = () => anotar(e);
+      v.addEventListener(e, h);
+      return h;
+    });
+    const mo = new MutationObserver(() => anotar("poster=" + (cover.style.opacity === "1" ? "TAPA" : "off")));
+    mo.observe(cover, { attributes: true, attributeFilter: ["style"] });
+
     const id = setInterval(() => {
-      const v = videoRef.current;
-      if (!v) return;
       const e = v.error;
       setDiag(
         `src=${(v.currentSrc || "").split("/").pop() || "—"}\n` +
           `ready=${v.readyState} net=${v.networkState} pause=${v.paused}\n` +
           `vid=${v.videoWidth}x${v.videoHeight} t=${v.currentTime.toFixed(1)}\n` +
-          `err=${e ? `${e.code} ${e.message || ""}` : "none"}`
+          `err=${e ? `${e.code} ${e.message || ""}` : "none"}\n` +
+          registro.join("\n")
       );
-    }, 500);
-    return () => clearInterval(id);
+    }, 250);
+    return () => {
+      clearInterval(id);
+      mo.disconnect();
+      eventos.forEach((e, i) => v.removeEventListener(e, manejadores[i]));
+    };
   }, []);
 
   return (
@@ -385,9 +442,11 @@ export default function VideoEngine({
             se la toca nunca. Quien tapa/destapa es el póster de arriba. Sin
             autoPlay: el play lo maneja el effect para arrancar la animación
             desde 0. */}
+        {/* Sin `loop`: el repetido lo decide `alTerminar` según cuánto quede de
+            placa (ver nota de `duracion`). */}
         <video
           ref={videoRef}
-          muted loop playsInline preload="auto"
+          muted playsInline preload="auto"
           style={{
             ...mediaStyle,
             zIndex: 1,
@@ -413,6 +472,14 @@ export default function VideoEngine({
             opacity: 0,
             pointerEvents: "none",
             transition: "none",
+            // Capa de composición PROPIA. En la grabación del TV, durante el negro
+            // se ve el texto (capa HTML de arriba) pero NO el póster, que vive en
+            // el mismo contenedor que el <video>: el plano de hardware parece
+            // tragarse todo lo que comparte capa con él. Sacando el póster a su
+            // propia capa deja de estar en esa bolsa.
+            transform: "translateZ(0)",
+            willChange: "transform",
+            backfaceVisibility: "hidden",
           }}
         />
       </div>
