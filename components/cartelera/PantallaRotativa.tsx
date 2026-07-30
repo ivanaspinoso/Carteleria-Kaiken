@@ -11,6 +11,7 @@ import { registrarTransicion } from "@/lib/cartelera/diag";
 import { COMPONENTES_PLACA, type PlacaProps } from "./placas";
 import { ModoOverlay } from "./placas/PlacaVideo";
 import VideoEngine, { type MediaTipo } from "./VideoEngine";
+import VideoSecuencia, { type Tramo } from "./VideoSecuencia";
 
 interface Props {
   datos: DatosPantalla;
@@ -216,8 +217,80 @@ export default function PantallaRotativa({ datos, videoLayer, rotacion = 0, vp }
     });
   }, [srcActual, proxSrc]);
 
+  // ── MODO SECUENCIA: un solo video continuo, sin recargas ──────────────────
+  // Si existe el archivo pegado de esta pantalla (scripts/pegar-placas.mjs) y
+  // coincide EXACTO con las placas activas de la base, se reproduce ese archivo
+  // en loop y el <video> no cambia de src nunca más. Si no coincide (el dueño
+  // activó, desactivó o reordenó algo, o subió una placa propia), o si el video
+  // falla, se cae sola al modo de a una placa: nunca queda rota, en el peor caso
+  // queda como antes.
+  // Los textos editables se dibujan SOLO en el navegador. En el servidor la placa
+  // se elige con el reloj, así que el HTML que manda el servidor y el que arma el
+  // navegador un instante después caen en placas distintas → React tiraba error
+  // de hidratación (#418, visto en producción en /pantalla/1). No se pierde nada:
+  // el texto entra igual, un cuadro después.
+  const [montado, setMontado] = useState(false);
+  useEffect(() => setMontado(true), []);
+
+  const [manifiesto, setManifiesto] = useState<{ tramos: Tramo[] } | null>(null);
+  const [secuenciaFallo, setSecuenciaFallo] = useState(false);
+  const [indiceSecuencia, setIndiceSecuencia] = useState(0);
+
+  useEffect(() => {
+    let vivo = true;
+    fetch(`/placas/secuencias/p${datos.pantalla.id}.json`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((m) => {
+        if (vivo && m?.tramos?.length) setManifiesto(m);
+      })
+      .catch(() => {});
+    return () => {
+      vivo = false;
+    };
+  }, [datos.pantalla.id]);
+
+  const usarSecuencia = useMemo(() => {
+    if (!manifiesto || secuenciaFallo) return false;
+    // Cualquier placa personalizada activa desarma la secuencia: esos videos los
+    // sube el dueño y no están dentro del archivo pegado.
+    if (items.some((i) => i.kind !== "fija")) return false;
+    const slugs = items.map((i) => (i.kind === "fija" ? i.data.slug : ""));
+    return (
+      slugs.length === manifiesto.tramos.length &&
+      slugs.every((s, i) => s === manifiesto.tramos[i].slug)
+    );
+  }, [manifiesto, secuenciaFallo, items]);
+
   if (len === 0) {
     return <div style={{ width: "100%", height: "100%", backgroundColor: "#000" }} />;
+  }
+
+  if (usarSecuencia && manifiesto) {
+    const idx = Math.min(indiceSecuencia, items.length - 1);
+    const overlaySec = buildOverlay(items[idx]);
+    const reproductor = (
+      <VideoSecuencia
+        src={`/placas/secuencias/p${datos.pantalla.id}.mp4`}
+        poster={posterDe(items[0])}
+        tramos={manifiesto.tramos}
+        onIndice={setIndiceSecuencia}
+        onFalla={() => setSecuenciaFallo(true)}
+      />
+    );
+    return (
+      <div ref={rootRef} style={{ width: "100%", height: "100%", position: "relative", overflow: "hidden" }}>
+        {videoLayer ? createPortal(reproductor, videoLayer) : reproductor}
+        {montado && overlaySec && (
+          <ModoOverlay.Provider value={true}>
+            {/* Sin fundidos: el video no se corta nunca, así que el texto puede
+                cambiar de golpe justo en el límite del tramo, como en el diseño. */}
+            <div key={items[idx].key} style={{ position: "absolute", inset: 0 }}>
+              {overlaySec}
+            </div>
+          </ModoOverlay.Provider>
+        )}
+      </div>
+    );
   }
 
   const objetivo = items[idxObjetivo];
@@ -277,7 +350,7 @@ export default function PantallaRotativa({ datos, videoLayer, rotacion = 0, vp }
       {videoLayer ? createPortal(motor, videoLayer) : motor}
       {/* Capa de overlay (texto editable). Entra con el crossfade del video
           (juntos) y se va rápido apenas arranca la transición. */}
-      {overlay && (
+      {montado && overlay && (
         <ModoOverlay.Provider value={true}>
           <OverlayFade key={mostrado.key} visible={!transicionando}>
             {overlay}
