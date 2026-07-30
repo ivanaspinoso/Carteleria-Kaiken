@@ -16,6 +16,11 @@ import { validarArchivoPlaca, esVideoUrl, generarPosterVideo, FORMATOS_VIDEO } f
 import type { GrupoGustos } from "@/lib/cartelera/gustos";
 import GustosEditor from "./GustosEditor";
 
+// Todas las placas duran lo mismo, y NO se edita desde el panel. Las fijas duran
+// lo que dura su video; tocar ese número no acortaba nada, sólo desalineaba las
+// pantallas y rompía la reproducción continua de las verticales.
+const DURACION_PLACA = 10;
+
 // Placas fijas (video) con precio(s) editable(s) superpuesto(s). Cada placa
 // define qué campos de precio tiene y su etiqueta. Se amplía placa por placa.
 type CampoPrecio = "precio" | "precio_alt";
@@ -243,11 +248,9 @@ function PersonalizadasTab({ pantalla, placas }: { pantalla: Pantalla; placas: P
             </div>
             {/* Controles: en mobile bajan a su propia fila y se alinean a la derecha. */}
             <div className="flex items-center gap-3 ml-auto justify-end">
-            <DuracionInput
-              valor={p.duracion}
-              disabled={isPending}
-              onGuardar={(d) => accion(() => actualizarPlacaPersonalizada(p.id, { duracion: d }))}
-            />
+            {/* Igual que las fijas: la duración no se edita. Es un número que
+                sólo puede traer problemas y ningún beneficio claro. */}
+            <span className="text-xs text-muted-foreground tabular-nums">{p.duracion}s</span>
             <ActivaToggle
               activa={p.activa}
               disabled={isPending}
@@ -281,7 +284,6 @@ function UploadForm({ pantalla }: { pantalla: Pantalla }) {
   const [file, setFile] = useState<File | null>(null);
   const [nombre, setNombre] = useState("");
   const [destino, setDestino] = useState<Destino>(pantalla);
-  const [duracion, setDuracion] = useState(10);
   const [inicio, setInicio] = useState("");
   const [fin, setFin] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -295,7 +297,6 @@ function UploadForm({ pantalla }: { pantalla: Pantalla }) {
     setFile(null);
     setNombre("");
     setDestino(pantalla);
-    setDuracion(10);
     setInicio("");
     setFin("");
     setWarn(null);
@@ -336,7 +337,7 @@ function UploadForm({ pantalla }: { pantalla: Pantalla }) {
         fd.set("file", file);
         fd.set("nombre", nombre.trim());
         fd.set("pantalla_id", String(d));
-        fd.set("duracion", String(duracion));
+        fd.set("duracion", String(DURACION_PLACA));
         if (inicio) fd.set("inicio", inicio);
         if (fin) fd.set("fin", fin);
         if (poster) fd.set("poster", poster, "poster.jpg");
@@ -392,10 +393,8 @@ function UploadForm({ pantalla }: { pantalla: Pantalla }) {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <input type="text" value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Nombre" disabled={isPending} className={inputClass} />
-        <div className="flex items-center gap-2">
-          <label className="text-xs text-muted-foreground">Dur. (s)</label>
-          <input type="number" min={1} value={duracion} onChange={(e) => setDuracion(Number(e.target.value))} disabled={isPending} className={inputClass} />
-        </div>
+        {/* Sin campo de duración: todas las placas duran lo mismo (DURACION_PLACA).
+            Es un número que sólo puede desalinear las pantallas. */}
         <div className="flex items-center gap-2">
           <label className="text-xs text-muted-foreground whitespace-nowrap">Desde</label>
           <input type="date" value={inicio} onChange={(e) => setInicio(e.target.value)} disabled={isPending} className={inputClass} />
@@ -503,25 +502,6 @@ function PrecioProductoInput({
         className="w-24 border rounded px-2 py-2 sm:py-1 text-base sm:text-sm bg-background text-right"
         aria-label="Precio del Kilo Kaikén"
       />
-    </div>
-  );
-}
-
-function DuracionInput({ valor, disabled, onGuardar }: { valor: number; disabled?: boolean; onGuardar: (d: number) => void }) {
-  const [d, setD] = useState(valor);
-  return (
-    <div className="flex items-center gap-1">
-      <input
-        type="number"
-        min={1}
-        value={d}
-        onChange={(e) => setD(Number(e.target.value))}
-        onBlur={() => d !== valor && d > 0 && onGuardar(d)}
-        disabled={disabled}
-        className="w-14 border rounded px-2 py-2 sm:py-1 text-base sm:text-sm bg-background text-center"
-        aria-label="Duración en segundos"
-      />
-      <span className="text-xs text-muted-foreground">s</span>
     </div>
   );
 }
