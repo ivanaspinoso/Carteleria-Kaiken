@@ -13,6 +13,7 @@ import {
 } from "@/lib/actions/placas";
 import { actualizarPrecio, actualizarGustosIncluidos } from "@/lib/actions/productos";
 import { validarArchivoPlaca, esVideoUrl, generarPosterVideo, FORMATOS_VIDEO } from "@/lib/cartelera/validarImagen";
+import { createClient } from "@/lib/supabase/client";
 import type { GrupoGustos } from "@/lib/cartelera/gustos";
 import GustosEditor from "./GustosEditor";
 
@@ -328,27 +329,58 @@ function UploadForm({ pantalla }: { pantalla: Pantalla }) {
     setError(null);
     const destinos: Pantalla[] = destino === "ambas" ? [1, 5] : [destino];
     startTransition(async () => {
-      // Si es video, generamos el póster (primer frame) en el navegador una sola
-      // vez y lo subimos junto al video → la cartelera tapa el hueco de carga
-      // sin negro en el TV. Si no se pudo, sigue sin póster.
-      const poster = FORMATOS_VIDEO.includes(file.type) ? await generarPosterVideo(file) : null;
-      for (const d of destinos) {
-        const fd = new FormData();
-        fd.set("file", file);
-        fd.set("nombre", nombre.trim());
-        fd.set("pantalla_id", String(d));
-        fd.set("duracion", String(DURACION_PLACA));
-        if (inicio) fd.set("inicio", inicio);
-        if (fin) fd.set("fin", fin);
-        if (poster) fd.set("poster", poster, "poster.jpg");
-        const res = await crearPlacaPersonalizada(fd);
-        if ("error" in res) {
-          setError(`Pantalla ${d}: ${res.error}`);
-          return;
+      // El archivo va DIRECTO del navegador a Supabase Storage. Antes viajaba
+      // dentro del server action y eso NO podía funcionar con videos: Next
+      // acepta 1MB por defecto y Vercel corta el cuerpo en 4,5MB, contra los
+      // 50MB que se permiten acá. El error ni siquiera se veía como mensaje:
+      // tumbaba la página con "Application error". Todo va dentro de un try.
+      try {
+        const supabase = createClient();
+        // Si es video, el póster (primer cuadro) se genera en el navegador una
+        // sola vez y se sube junto → la cartelera tapa el hueco de carga sin
+        // negro en el TV. Si no se pudo, sigue sin póster.
+        const poster = FORMATOS_VIDEO.includes(file.type) ? await generarPosterVideo(file) : null;
+        const ext = (file.name.split(".").pop() || "png").toLowerCase();
+
+        for (const d of destinos) {
+          const base = `${d}/${crypto.randomUUID()}`;
+          const path = `${base}.${ext}`;
+          const { error: upErr } = await supabase.storage
+            .from("placas-personalizadas")
+            .upload(path, file, { contentType: file.type, upsert: false });
+          if (upErr) {
+            setError(`Pantalla ${d}: no se pudo subir el archivo (${upErr.message})`);
+            return;
+          }
+
+          let posterPath = "";
+          if (poster) {
+            const pPath = `${base}.poster.jpg`;
+            const { error: pErr } = await supabase.storage
+              .from("placas-personalizadas")
+              .upload(pPath, poster, { contentType: "image/jpeg", upsert: false });
+            if (!pErr) posterPath = pPath;
+          }
+
+          const fd = new FormData();
+          fd.set("path", path);
+          if (posterPath) fd.set("poster_path", posterPath);
+          fd.set("nombre", nombre.trim());
+          fd.set("pantalla_id", String(d));
+          fd.set("duracion", String(DURACION_PLACA));
+          if (inicio) fd.set("inicio", inicio);
+          if (fin) fd.set("fin", fin);
+          const res = await crearPlacaPersonalizada(fd);
+          if ("error" in res) {
+            setError(`Pantalla ${d}: ${res.error}`);
+            return;
+          }
         }
+        reset();
+        router.refresh();
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "No se pudo subir la placa");
       }
-      reset();
-      router.refresh();
     });
   }
 

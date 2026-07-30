@@ -4,6 +4,7 @@ import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Upload, RefreshCw, AlertTriangle } from "lucide-react";
 import type { PantallaImagen } from "@/lib/types";
+import { createClient } from "@/lib/supabase/client";
 import { subirImagenPantalla } from "@/lib/actions/pantallaImagen";
 import {
   validarArchivoImagenPantalla,
@@ -67,12 +68,34 @@ export default function ImagenPantallaAdmin({ pantallaId, actual }: Props) {
     if (!file) return;
     setError(null);
     startTransition(async () => {
-      const fd = new FormData();
-      fd.set("file", file);
-      fd.set("pantalla_id", String(pantallaId));
-      const res = await subirImagenPantalla(fd);
-      if ("error" in res) {
-        setError(res.error);
+      // El archivo va DIRECTO del navegador a Supabase Storage. No puede viajar
+      // dentro del server action: Next acepta 1MB y Vercel corta en 4,5MB, y el
+      // error que eso tiraba no estaba atrapado — el dueño terminaba viendo
+      // "Application error: a client-side exception has occurred" en vez de un
+      // mensaje. Acá abajo, además, todo va dentro de un try: ninguna falla de
+      // subida puede tumbar la pantalla.
+      try {
+        const supabase = createClient();
+        const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
+        const path = `${pantallaId}/${crypto.randomUUID()}.${ext}`;
+        const { error: upErr } = await supabase.storage
+          .from("pantallas-imagen")
+          .upload(path, file, { contentType: file.type, upsert: false });
+        if (upErr) {
+          setError(`No se pudo subir la imagen: ${upErr.message}`);
+          return;
+        }
+
+        const fd = new FormData();
+        fd.set("path", path);
+        fd.set("pantalla_id", String(pantallaId));
+        const res = await subirImagenPantalla(fd);
+        if ("error" in res) {
+          setError(res.error);
+          return;
+        }
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "No se pudo subir la imagen");
         return;
       }
       // OJO: no se limpia `file` acá. Si se limpiara, la preview desaparecería

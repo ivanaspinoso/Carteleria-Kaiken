@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import type { TablesUpdate } from "@/lib/types";
-import { FORMATOS_OK, FORMATOS_VIDEO, MAX_BYTES, MAX_VIDEO_BYTES } from "@/lib/cartelera/validarImagen";
+import { MAX_BYTES, MAX_VIDEO_BYTES } from "@/lib/cartelera/validarImagen";
 
 export type Resultado = { error: string } | { ok: true };
 
@@ -47,23 +47,41 @@ export async function crearPlacaPersonalizada(formData: FormData): Promise<Resul
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: "No autenticado" };
 
-  const file = formData.get("file");
+  // El archivo NO viaja por acá: lo sube el navegador directo a Storage y este
+  // action recibe la ruta. Mandarlo dentro del server action era imposible para
+  // videos: Next acepta 1MB por defecto y Vercel corta el cuerpo en 4,5MB,
+  // mientras que acá se permiten videos de hasta 50MB. El error que eso tiraba
+  // no estaba atrapado y salía como "Application error" en el panel.
+  const path = String(formData.get("path") ?? "");
+  const posterPathSubido = String(formData.get("poster_path") ?? "");
   const nombre = String(formData.get("nombre") ?? "").trim();
   const pantallaId = Number(formData.get("pantalla_id"));
   const duracion = Number(formData.get("duracion") ?? 10);
   const inicio = (formData.get("inicio") as string) || null;
   const fin = (formData.get("fin") as string) || null;
 
-  if (!(file instanceof File) || file.size === 0) return { error: "Falta el archivo" };
+  if (!path) return { error: "Falta el archivo" };
   if (!nombre) return { error: "Falta el nombre" };
   if (![1, 5].includes(pantallaId)) return { error: "Pantalla inválida (solo 1 o 5)" };
+  if (!path.startsWith(`${pantallaId}/`) || path.includes("..")) return { error: "Ruta inválida" };
 
-  // Re-chequeo de seguridad en el server (formato + peso; dimensiones se validan en el cliente)
-  const esVideo = FORMATOS_VIDEO.includes(file.type);
-  const esImagen = FORMATOS_OK.includes(file.type);
+  const extension = path.split(".").pop()?.toLowerCase() ?? "";
+  const esVideo = ["mp4", "webm"].includes(extension);
+  const esImagen = ["jpg", "jpeg", "png"].includes(extension);
   if (!esVideo && !esImagen) return { error: "Formato inválido (JPG, PNG, MP4 o WEBM)" };
-  if (esVideo && file.size > MAX_VIDEO_BYTES) return { error: "El video supera los 50MB" };
-  if (esImagen && file.size > MAX_BYTES) return { error: "La imagen supera los 5MB" };
+
+  // Que el archivo exista de verdad y respete el máximo.
+  const { data: enBucket } = await supabase.storage
+    .from(BUCKET)
+    .list(String(pantallaId), { search: path.split("/").pop() });
+  const subido = enBucket?.[0];
+  if (!subido) return { error: "No se encontró el archivo subido" };
+  const peso = (subido.metadata as { size?: number } | null)?.size ?? 0;
+  const tope = esVideo ? MAX_VIDEO_BYTES : MAX_BYTES;
+  if (peso > tope) {
+    await supabase.storage.from(BUCKET).remove([path]).then(() => {}, () => {});
+    return { error: esVideo ? "El video supera los 50MB" : "La imagen supera los 5MB" };
+  }
 
   // orden global = (máximo entre fijas y personalizadas de esa pantalla) + 1
   const [{ data: maxFija }, { data: maxPers }] = await Promise.all([
@@ -71,16 +89,6 @@ export async function crearPlacaPersonalizada(formData: FormData): Promise<Resul
     supabase.from("placas_personalizadas").select("orden").eq("pantalla_id", pantallaId).order("orden", { ascending: false }).limit(1).maybeSingle(),
   ]);
   const orden = Math.max(maxFija?.orden ?? 0, maxPers?.orden ?? 0) + 1;
-
-  const base = `${pantallaId}/${crypto.randomUUID()}`;
-  const ext = (file.name.split(".").pop() || "png").toLowerCase();
-  const path = `${base}.${ext}`;
-
-  const { error: upErr } = await supabase.storage.from(BUCKET).upload(path, file, {
-    contentType: file.type,
-    upsert: false,
-  });
-  if (upErr) return { error: "Error al subir la imagen" };
 
   const { data: pub } = supabase.storage.from(BUCKET).getPublicUrl(path);
 
@@ -90,17 +98,9 @@ export async function crearPlacaPersonalizada(formData: FormData): Promise<Resul
   // (la placa cae al modo directo, sin romper la subida).
   let posterUrl: string | null = null;
   let posterPath: string | null = null;
-  const poster = formData.get("poster");
-  if (esVideo && poster instanceof File && poster.size > 0) {
-    const pPath = `${base}.poster.jpg`;
-    const { error: pErr } = await supabase.storage.from(BUCKET).upload(pPath, poster, {
-      contentType: "image/jpeg",
-      upsert: false,
-    });
-    if (!pErr) {
-      posterPath = pPath;
-      posterUrl = supabase.storage.from(BUCKET).getPublicUrl(pPath).data.publicUrl;
-    }
+  if (esVideo && posterPathSubido && posterPathSubido.startsWith(`${pantallaId}/`)) {
+    posterPath = posterPathSubido;
+    posterUrl = supabase.storage.from(BUCKET).getPublicUrl(posterPathSubido).data.publicUrl;
   }
 
   const { error: insErr } = await supabase.from("placas_personalizadas").insert({
