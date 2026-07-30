@@ -51,6 +51,7 @@ export default function VideoEngine({
   vp,
   ajuste = "cover",
   duracion,
+  onDiag,
   onReady,
 }: {
   src: string;
@@ -86,6 +87,16 @@ export default function VideoEngine({
   // milisegundos antes del cambio y se veía la placa VACIARSE y re-animarse justo
   // antes de irse (visible en la grabación del cliente, kaiken30.mp4 t≈41.9).
   duracion?: number;
+  // Telemetría de la transición (ver lib/cartelera/diag.ts): se llama una vez por
+  // cambio de placa, ~1.5s después de revelar el video, con los tiempos medidos.
+  onDiag?: (d: {
+    espera_poster_ms: number;
+    hueco_ms: number;
+    carga_ms: number;
+    desde_blob: boolean;
+    eventos: string;
+    repitio: boolean;
+  }) => void;
   // Se llama cuando la placa nueva está VIVA en pantalla: el <video> ya está
   // pintando su animación de entrada. PantallaRotativa lo usa para meter el texto
   // editable, así entra JUNTO con los gráficos. Antes se avisaba con el póster
@@ -110,6 +121,9 @@ export default function VideoEngine({
 
   const duracionRef = useRef(duracion);
   duracionRef.current = duracion;
+
+  const onDiagRef = useRef(onDiag);
+  onDiagRef.current = onDiag;
 
   const mediaStyle: CSSProperties = {
     position: "absolute",
@@ -157,6 +171,20 @@ export default function VideoEngine({
     let cargado = false;
     const timers: ReturnType<typeof setTimeout>[] = [];
     const rafs: number[] = [];
+
+    // Cronómetros de esta transición, para la telemetría. Sin esto no hay forma
+    // de saber qué pasa en las TVs del local (ver lib/cartelera/diag.ts).
+    const t0 = Date.now();
+    let tTapa = 0;
+    let tCarga = 0;
+    const eventosRaros: string[] = [];
+    let repitio = false;
+    const anotarRaro = (e: Event) => {
+      if (eventosRaros.length < 6) eventosRaros.push(e.type);
+    };
+    ["waiting", "stalled", "error", "abort"].forEach((e) =>
+      video.addEventListener(e, anotarRaro)
+    );
 
     // El texto editable entra UNA sola vez por placa, y con los gráficos vivos.
     let avisado = false;
@@ -218,6 +246,7 @@ export default function VideoEngine({
     const cargar = () => {
       if (cancel) return;
       cargado = true;
+      tCarga = Date.now();
       video.muted = true;
       video.setAttribute("muted", "");
       // Blob en memoria si PantallaRotativa alcanzó a bajarlo; si no, la URL.
@@ -246,6 +275,7 @@ export default function VideoEngine({
         const revelado = Date.now();
         const alTerminar = () => {
           if (cancel) return;
+          repitio = true;
           const dur = duracionRef.current;
           const restante = dur ? dur * 1000 - (Date.now() - revelado) : 0;
           if (restante > 1200) {
@@ -275,6 +305,23 @@ export default function VideoEngine({
           // recién ahora entra el texto editable, para que no quede flotando sobre
           // una placa a medio dibujar.
           avisarListo();
+
+          // Telemetría: se manda 1.5s después de revelar, así alcanza a incluir
+          // los cortes (waiting/stalled) que aparecen apenas arranca el video.
+          const tVivo = Date.now();
+          timers.push(
+            setTimeout(() => {
+              if (cancel) return;
+              onDiagRef.current?.({
+                espera_poster_ms: (tTapa || tVivo) - t0,
+                hueco_ms: tTapa ? tVivo - tTapa : 0,
+                carga_ms: tCarga ? tVivo - tCarga : 0,
+                desde_blob: (mediaSrcRef.current || "").startsWith("blob:"),
+                eventos: eventosRaros.join(","),
+                repitio,
+              });
+            }, 1500)
+          );
         };
         // Señal preferida: requestVideoFrameCallback dispara en el frame EXACTO
         // en que el video presenta imagen (Chromium 83+, o sea Tizen 7/8 de P1/P5).
@@ -303,6 +350,7 @@ export default function VideoEngine({
       if (cancel) return;
       cover.style.opacity = "1"; // tapa de golpe (instantáneo, sin fundido)
       video.style.opacity = "1"; // por si venía de una placa tipo "imagen"
+      tTapa = Date.now();
       // Red de seguridad del texto: si el <video> no llega a pintar (mp4 trabado),
       // el texto entra igual a los 900ms para que la placa no quede sin precio.
       // El camino normal es que lo dispare `destapar`, con los gráficos ya vivos.
@@ -386,6 +434,9 @@ export default function VideoEngine({
       if (!cargado) srcRef.current = null;
       timers.forEach(clearTimeout);
       rafs.forEach(cancelAnimationFrame);
+      ["waiting", "stalled", "error", "abort"].forEach((e) =>
+        video.removeEventListener(e, anotarRaro)
+      );
     };
   }, [src, tipo, poster]);
 

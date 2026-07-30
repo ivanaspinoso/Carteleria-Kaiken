@@ -7,6 +7,7 @@ import { parsePlacaConfig, parseGustos, esKiloKaiken } from "@/lib/types";
 import { formatPrecio, formatFecha } from "@/lib/format";
 import { calcularIndiceRotacion, dentroDeFechas } from "@/lib/cartelera/rotacion";
 import { esVideoUrl } from "@/lib/cartelera/validarImagen";
+import { registrarTransicion } from "@/lib/cartelera/diag";
 import { COMPONENTES_PLACA, type PlacaProps } from "./placas";
 import { ModoOverlay } from "./placas/PlacaVideo";
 import VideoEngine, { type MediaTipo } from "./VideoEngine";
@@ -256,6 +257,17 @@ export default function PantallaRotativa({ datos, videoLayer, rotacion = 0, vp }
       // 9:16 exacto). Fijas: cover (ya son 9:16 y llenan la pantalla).
       ajuste={objetivo.kind === "pers" ? "contain" : "cover"}
       duracion={objetivo.duracion}
+      // Telemetría: la TV deja anotadas las transiciones que salen mal. Es la
+      // única forma de ver qué pasa en el local — el destello no se reproduce en
+      // Chromium de escritorio y el navegador del TV se maneja con control remoto,
+      // así que no se le puede pedir a nadie que abra la pantalla con ?diag=1.
+      onDiag={(d) =>
+        registrarTransicion({
+          ...d,
+          pantalla: datos.pantalla.id,
+          slug: objetivo.kind === "fija" ? objetivo.data.slug : "personalizada",
+        })
+      }
       onReady={() => setIndiceMostrado(indice)}
     />
   );
