@@ -24,8 +24,8 @@ interface Props {
 }
 
 type Item =
-  | { key: string; orden: number; duracion: number; kind: "fija"; data: PlacaFija }
-  | { key: string; orden: number; duracion: number; kind: "pers"; data: TPlacaPersonalizada };
+  | { key: string; orden: number; duracion: number; desempate: string; kind: "fija"; data: PlacaFija }
+  | { key: string; orden: number; duracion: number; desempate: string; kind: "pers"; data: TPlacaPersonalizada };
 
 /*
  * Rotación de las placas verticales (pantallas 1 y 5) — arquitectura de signage:
@@ -45,11 +45,24 @@ export default function PantallaRotativa({ datos, videoLayer, rotacion = 0, vp }
     const nowMs = Date.now();
     const fijas: Item[] = (datos.placas_fijas ?? [])
       .filter((pf) => pf.activa && dentroDeFechas(pf.inicio, pf.fin, nowMs))
-      .map((pf) => ({ key: `f-${pf.id}`, orden: pf.orden, duracion: pf.duracion, kind: "fija", data: pf }));
+      .map((pf) => ({
+        key: `f-${pf.id}`, orden: pf.orden, duracion: pf.duracion,
+        desempate: pf.slug, kind: "fija", data: pf,
+      }));
     const pers: Item[] = (datos.placas_personalizadas ?? [])
       .filter((pp) => pp.activa && dentroDeFechas(pp.inicio, pp.fin, nowMs))
-      .map((pp) => ({ key: `p-${pp.id}`, orden: pp.orden, duracion: pp.duracion, kind: "pers", data: pp }));
-    return [...fijas, ...pers].sort((a, b) => a.orden - b.orden || a.key.localeCompare(b.key));
+      .map((pp) => ({
+        key: `p-${pp.id}`, orden: pp.orden, duracion: pp.duracion,
+        desempate: pp.id, kind: "pers", data: pp,
+      }));
+    // Desempate por SLUG, no por id: si dos placas comparten el mismo `orden`
+    // (hoy pasa en la P1 con diez-off y kilo-kaiken, ambas en 9), ordenar por el
+    // id UUID daba un orden arbitrario e imposible de reproducir fuera de la
+    // app. El script que pega los videos ordena por slug, y los dos tienen que
+    // coincidir o la secuencia no se usa nunca.
+    return [...fijas, ...pers].sort(
+      (a, b) => a.orden - b.orden || a.desempate.localeCompare(b.desempate)
+    );
   }, [datos.placas_fijas, datos.placas_personalizadas]);
 
   const [indice, setIndice] = useState(() =>

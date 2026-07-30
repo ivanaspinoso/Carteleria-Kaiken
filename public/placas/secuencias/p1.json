@@ -1,0 +1,51 @@
+{
+  "pantalla": 1,
+  "generado": "2026-07-30T14:39:29.412Z",
+  "total": 110,
+  "tramos": [
+    {
+      "slug": "antojo-de-tarde",
+      "duracion": 10
+    },
+    {
+      "slug": "promo-especial",
+      "duracion": 10
+    },
+    {
+      "slug": "despues-cole-tostado",
+      "duracion": 10
+    },
+    {
+      "slug": "despues-cole-budin",
+      "duracion": 10
+    },
+    {
+      "slug": "frappuccino",
+      "duracion": 10
+    },
+    {
+      "slug": "novedad-del-mes",
+      "duracion": 10
+    },
+    {
+      "slug": "affogato",
+      "duracion": 10
+    },
+    {
+      "slug": "cuartos",
+      "duracion": 10
+    },
+    {
+      "slug": "diez-off",
+      "duracion": 10
+    },
+    {
+      "slug": "kilo-kaiken",
+      "duracion": 10
+    },
+    {
+      "slug": "gusto-del-dia",
+      "duracion": 10
+    }
+  ]
+}
