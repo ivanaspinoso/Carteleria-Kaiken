@@ -267,11 +267,16 @@ export default function PantallaRotativa({ datos, videoLayer, rotacion = 0, vp }
     // Cualquier placa personalizada activa desarma la secuencia: esos videos los
     // sube el dueño y no están dentro del archivo pegado.
     if (items.some((i) => i.kind !== "fija")) return false;
-    const slugs = items.map((i) => (i.kind === "fija" ? i.data.slug : ""));
-    return (
-      slugs.length === manifiesto.tramos.length &&
-      slugs.every((s, i) => s === manifiesto.tramos[i].slug)
-    );
+    if (items.length !== manifiesto.tramos.length) return false;
+    // Se comparan nombre Y duración. Sin la duración, si el dueño cambiaba
+    // cuánto dura una placa el video seguía con la duración vieja y el cambio se
+    // ignoraba en silencio. La tolerancia es porque el manifiesto guarda la
+    // duración REAL del mp4 (10.000s) y la base guarda la configurada (10).
+    return items.every((it, i) => {
+      const tramo = manifiesto.tramos[i];
+      if (it.kind !== "fija" || it.data.slug !== tramo.slug) return false;
+      return Math.abs(it.duracion - tramo.duracion) <= 0.5;
+    });
   }, [manifiesto, secuenciaFallo, items]);
 
   if (len === 0) {

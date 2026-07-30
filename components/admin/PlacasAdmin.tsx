@@ -152,11 +152,12 @@ function FijasList({ fijas, kilo, gruposGustos }: { fijas: PlacaFija[]; kilo: Pr
                 }
               />
             ))}
-            <DuracionInput
-              valor={p.duracion}
-              disabled={isPending}
-              onGuardar={(d) => accion(() => actualizarPlacaFija(p.id, { duracion: d }))}
-            />
+            {/* La duración de las placas fijas NO se edita: cada una dura lo que
+                dura su video (10s), y las dos pantallas verticales reproducen un
+                único archivo con todas las placas pegadas. Cambiar el número acá
+                no acortaría el video, solo desarmaría esa reproducción continua
+                y devolvería el parpadeo negro entre placas. */}
+            <span className="text-xs text-muted-foreground tabular-nums">{p.duracion}s</span>
             <ActivaToggle
               activa={p.activa}
               disabled={isPending}
