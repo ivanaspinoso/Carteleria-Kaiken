@@ -95,7 +95,11 @@ function FormLogin({
 
       <div className="space-y-1.5">
         <label htmlFor="email" className="text-sm font-medium">Email</label>
+        {/* autoCapitalize/autoCorrect apagados: el teclado del celular pone la
+            primera letra en mayúscula y "corrige" la dirección, y después el
+            login falla sin que se note qué cambió. */}
         <input id="email" name="email" type="email" autoComplete="email" required
+          autoCapitalize="none" autoCorrect="off" spellCheck={false} inputMode="email"
           placeholder="admin@kaiken.com" className={inputClass} />
       </div>
 
@@ -141,6 +145,7 @@ function FormCambiar({ onVolver, onOlvide }: { onVolver: () => void; onOlvide: (
       <div className="space-y-1.5">
         <label htmlFor="c-email" className="text-sm font-medium">Email</label>
         <input id="c-email" name="email" type="email" autoComplete="email" required
+          autoCapitalize="none" autoCorrect="off" spellCheck={false} inputMode="email"
           placeholder="admin@kaiken.com" className={inputClass} />
       </div>
 
@@ -183,7 +188,7 @@ function FormOlvide({ onVolver }: { onVolver: () => void }) {
     setEstado("enviando");
     setMsg(null);
     const supabase = createClient();
-    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
       redirectTo: `${window.location.origin}/login`,
     });
     if (error) {
@@ -214,6 +219,7 @@ function FormOlvide({ onVolver }: { onVolver: () => void }) {
       <div className="space-y-1.5">
         <label htmlFor="o-email" className="text-sm font-medium">Email</label>
         <input id="o-email" type="email" autoComplete="email" required value={email}
+          autoCapitalize="none" autoCorrect="off" spellCheck={false} inputMode="email"
           onChange={(e) => setEmail(e.target.value)} placeholder="admin@kaiken.com" className={inputClass} />
       </div>
 

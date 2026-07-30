@@ -30,7 +30,9 @@ export async function login(
   _prev: LoginState,
   formData: FormData
 ): Promise<LoginState> {
-  const email      = (formData.get("email")      ?? "").toString().trim();
+  // El email va SIEMPRE en minúsculas: los teclados de celular arrancan en
+  // mayúscula y "Sivana361@…" no entra. Las direcciones no distinguen may/min.
+  const email      = normalizarEmail(formData.get("email"));
   const password   = (formData.get("password")   ?? "").toString();
   const redirectTo = (formData.get("redirectTo") ?? "").toString();
 
@@ -39,7 +41,20 @@ export async function login(
   }
 
   const supabase = await makeSupabase();
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  let { error } = await supabase.auth.signInWithPassword({ email, password });
+
+  // Segundo intento sin los espacios de los bordes. Copiar y pegar la
+  // contraseña desde WhatsApp, o el autocompletado del celular, suele arrastrar
+  // un espacio invisible al final; escrita a mano en la compu no pasa, y por eso
+  // el mismo usuario entra en un lado y no en el otro. No se recorta de entrada:
+  // si la contraseña de verdad tuviera un espacio, seguiría funcionando.
+  const recortada = password.trim();
+  if (error && recortada && recortada !== password) {
+    ({ error } = await supabase.auth.signInWithPassword({
+      email,
+      password: recortada,
+    }));
+  }
 
   if (error) {
     return { error: traducirError(error.message) };
@@ -60,7 +75,7 @@ export async function cambiarPassword(
   _prev: CambioState,
   formData: FormData
 ): Promise<CambioState> {
-  const email  = (formData.get("email")  ?? "").toString().trim();
+  const email  = normalizarEmail(formData.get("email"));
   const actual = (formData.get("actual") ?? "").toString();
   const nueva  = (formData.get("nueva")  ?? "").toString();
 
@@ -103,9 +118,13 @@ export async function logout(): Promise<void> {
   redirect("/login");
 }
 
+function normalizarEmail(valor: FormDataEntryValue | null): string {
+  return (valor ?? "").toString().trim().toLowerCase();
+}
+
 function traducirError(msg: string): string {
   if (msg.includes("Invalid login credentials"))
-    return "Email o contraseña incorrectos";
+    return 'Email o contraseña incorrectos. Si no la recordás, tocá "Olvidé mi contraseña" y te llega un enlace por email.';
   if (msg.includes("Email not confirmed"))
     return "Confirmá tu email antes de ingresar";
   if (msg.includes("Too many requests"))
