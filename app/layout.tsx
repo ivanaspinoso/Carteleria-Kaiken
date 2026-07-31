@@ -31,6 +31,11 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
+  // Emite <meta name="color-scheme" content="light">. Va JUNTO con el
+  // `color-scheme: only light` de globals.css: algunos navegadores de Smart TV
+  // deciden si aplican su auto dark mode leyendo el meta del <head>, antes de
+  // bajar el CSS, así que con la regla sola llegaban a invertir igual.
+  colorScheme: "light",
   // TODO: reemplazar con color de marca real
   themeColor: "#5F3641",
 };

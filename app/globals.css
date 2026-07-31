@@ -49,6 +49,16 @@
 }
 
 :root {
+  /* Los navegadores de Smart TV traen un "auto dark mode" que INVIERTE los
+     fondos claros y los textos oscuros de cualquier página HTML (no toca
+     imágenes ni video). Con eso prendido, la P4 (cafetería + pastelería) se veía
+     con fondo azul oscuro y letra clara en el local, mientras la P2 —que es una
+     imagen— salía bien: la firma exacta de esa inversión.
+     `only light` le dice al navegador que esta página NO tiene variante oscura,
+     y ahí el auto dark mode la deja en paz. Va en :root para que valga también
+     para el panel de admin, que corre el mismo riesgo. */
+  color-scheme: only light;
+
   /* Kaiken brand palette */
   --background: #EFEDDC;
   --foreground: #5F3641;
