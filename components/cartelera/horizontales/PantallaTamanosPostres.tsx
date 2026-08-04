@@ -100,11 +100,18 @@ export default function PantallaTamanosPostres({ datos }: { datos: DatosPantalla
 }
 
 function PostreRow({ p, dosPrecios }: { p: Producto; dosPrecios: boolean }) {
+  // Sin stock: UN solo "Sin Stock" ocupando las dos casillas (90 + 8 + 90), no
+  // uno por tamaño. "Sin Stock" es bastante más ancho que un precio y con
+  // `nowrap` se desbordaba de su casilla de 90 encima de la vecina: en el TV se
+  // leía "Sin StocSin Stock" (foto del local). Repetirlo tampoco aportaba nada
+  // —si no hay stock, no lo hay ni en chico ni en grande— y de paso queda
+  // alineado con la columna de un solo precio, que ya usa 188.
+  const sinStockAncho = dosPrecios && !p.en_stock;
   return (
     <div style={{ display: "flex", alignItems: "flex-end", opacity: p.en_stock ? 1 : 0.5 }}>
       <span style={{ fontSize: pxHT(24), fontWeight: 700, textDecoration: p.en_stock ? undefined : "line-through" }}>{p.nombre}</span>
       <Relleno />
-      {dosPrecios ? (
+      {dosPrecios && !sinStockAncho ? (
         <>
           <span style={{ width: pxHT(90), textAlign: "right" }}>
             <Precio precio={p.precio} enStock={p.en_stock} fontPx={24} />
