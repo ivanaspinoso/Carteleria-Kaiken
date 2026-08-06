@@ -8,6 +8,7 @@ import { formatPrecio, formatFecha } from "@/lib/format";
 import { calcularIndiceRotacion, dentroDeFechas } from "@/lib/cartelera/rotacion";
 import { esVideoUrl } from "@/lib/cartelera/validarImagen";
 import { registrarTransicion } from "@/lib/cartelera/diag";
+import { registrarSoporteMse } from "@/lib/cartelera/diagMse";
 import { COMPONENTES_PLACA, type PlacaProps } from "./placas";
 import { ModoOverlay } from "./placas/PlacaVideo";
 import VideoEngine, { type MediaTipo } from "./VideoEngine";
@@ -244,6 +245,14 @@ export default function PantallaRotativa({ datos, videoLayer, rotacion = 0, vp }
   // el texto entra igual, un cuadro después.
   const [montado, setMontado] = useState(false);
   useEffect(() => setMontado(true), []);
+
+  // Sonda de MSE: pregunta capacidades y deja UNA fila por día en
+  // diag_transiciones para poder leer desde afuera si el Samsung banca el modo
+  // que haría innecesario regenerar el video pegado. No decodifica nada ni toca
+  // el reproductor. TEMPORAL: borrar junto con lib/cartelera/diagMse.ts.
+  useEffect(() => {
+    void registrarSoporteMse(datos.pantalla.id);
+  }, [datos.pantalla.id]);
 
   const [manifiesto, setManifiesto] = useState<{ tramos: Tramo[] } | null>(null);
   const [secuenciaFallo, setSecuenciaFallo] = useState(false);
