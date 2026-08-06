@@ -13,7 +13,7 @@ import { COMPONENTES_PLACA, type PlacaProps } from "./placas";
 import { ModoOverlay } from "./placas/PlacaVideo";
 import VideoEngine, { type MediaTipo } from "./VideoEngine";
 import VideoSecuencia, { type Tramo } from "./VideoSecuencia";
-import VideoMse, { type ManifiestoMse } from "./VideoMse";
+import VideoMse, { type ManifiestoMse, type PlacaMse } from "./VideoMse";
 
 interface Props {
   datos: DatosPantalla;
@@ -277,20 +277,65 @@ export default function PantallaRotativa({ datos, videoLayer, rotacion = 0, vp }
     };
   }, []);
 
+  // Las personalizadas traen sus assets MSE al lado del archivo original, con
+  // el mismo nombre y otra extensión (los sube el panel al recodificarlas en el
+  // navegador). No hay columna en la base: se deduce de la URL y se comprueba
+  // pidiendo el archivo. Si no está, esa placa no puede ir por MSE.
+  const baseMseDe = (url: string) => url.replace(/\.[^./]+$/, "");
+  const [persConMse, setPersConMse] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    const pendientes = items.filter(
+      (i) => i.kind === "pers" && persConMse[i.data.id] === undefined
+    );
+    if (pendientes.length === 0) return;
+    let vivo = true;
+    Promise.all(
+      pendientes.map(async (it) => {
+        if (it.kind !== "pers") return null;
+        try {
+          const r = await fetch(`${baseMseDe(it.data.imagen_url)}.m4s`, { method: "HEAD" });
+          return [it.data.id, r.ok] as const;
+        } catch {
+          return [it.data.id, false] as const;
+        }
+      })
+    ).then((res) => {
+      if (!vivo) return;
+      const nuevos: Record<string, boolean> = {};
+      for (const r of res) if (r) nuevos[r[0]] = r[1];
+      if (Object.keys(nuevos).length) setPersConMse((p) => ({ ...p, ...nuevos }));
+    });
+    return () => {
+      vivo = false;
+    };
+  }, [items, persConMse]);
+
   const usarMse = useMemo(() => {
     if (!manifiestoMse || mseFallo) return false;
-    // Las personalizadas las sube el dueño en cualquier formato: no comparten el
-    // init segment, así que meterlas acá reconfiguraría el decoder.
-    if (items.some((i) => i.kind !== "fija")) return false;
-    // Toda placa activa tiene que tener su segmento preparado.
     const conSegmento = new Set(manifiestoMse.tramos.map((t) => t.slug));
-    return items.every((it) => it.kind === "fija" && conSegmento.has(it.data.slug));
-  }, [manifiestoMse, mseFallo, items]);
+    return items.every((it) =>
+      it.kind === "fija" ? conSegmento.has(it.data.slug) : persConMse[it.data.id] === true
+    );
+  }, [manifiestoMse, mseFallo, items, persConMse]);
 
   // El orden que consume el player. Sale de la base, así que cambiarlo en el
   // panel lo cambia acá sin remontar el <video>.
-  const ordenMse = useMemo(
-    () => items.filter((i) => i.kind === "fija").map((i) => (i.kind === "fija" ? i.data.slug : "")),
+  const ordenMse = useMemo<PlacaMse[]>(
+    () =>
+      items.map((i) =>
+        i.kind === "fija"
+          ? {
+              clave: i.key,
+              segmento: `/placas/mse/${i.data.slug}.m4s`,
+              init: "/placas/mse/init.mp4",
+            }
+          : {
+              clave: i.key,
+              segmento: `${baseMseDe(i.data.imagen_url)}.m4s`,
+              init: `${baseMseDe(i.data.imagen_url)}.init.mp4`,
+            }
+      ),
     [items]
   );
 
@@ -333,9 +378,9 @@ export default function PantallaRotativa({ datos, videoLayer, rotacion = 0, vp }
   }
 
   if (usarMse && manifiestoMse) {
-    // El overlay sigue al slug que el player dice estar mostrando (no al reloj):
-    // así el texto no se puede adelantar a la placa.
-    const itemMse = items.find((i) => i.kind === "fija" && i.data.slug === slugMse) ?? items[0];
+    // El overlay sigue a la placa que el player dice estar mostrando (no al
+    // reloj): así el texto no se puede adelantar al video.
+    const itemMse = items.find((i) => i.key === slugMse) ?? items[0];
     const overlayMse = buildOverlay(itemMse);
     const reproductor = (
       <VideoMse

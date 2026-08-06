@@ -1,4 +1,4 @@
-const CACHE_VERSION = "v32";
+const CACHE_VERSION = "v33";
 const CACHE_STATIC = `kaiken-static-${CACHE_VERSION}`;
 const CACHE_PAGES = `kaiken-pages-${CACHE_VERSION}`;
 const ALL_CACHES = [CACHE_STATIC, CACHE_PAGES];
@@ -29,6 +29,32 @@ self.addEventListener("fetch", (event) => {
 
   if (request.method !== "GET") return;
   if (!url.protocol.startsWith("http")) return;
+
+  // Segmentos MSE de las placas personalizadas. Viven en Storage (supabase.co)
+  // pero son archivos estáticos, no datos: van cache-first, ANTES de la regla
+  // de abajo. Sin esto la pantalla los volvería a bajar en cada vuelta de la
+  // rotación y una red lenta se notaría como un tirón.
+  if (
+    url.hostname.includes("supabase.co") &&
+    url.pathname.includes("/placas-personalizadas/") &&
+    (url.pathname.endsWith(".m4s") || url.pathname.endsWith(".init.mp4"))
+  ) {
+    event.respondWith(
+      caches.match(request).then(
+        (cached) =>
+          cached ??
+          fetch(request).then((res) => {
+            const copia = res.clone();
+            caches
+              .open(CACHE_STATIC)
+              .then((c) => c.put(request, copia))
+              .catch(() => {});
+            return res;
+          })
+      )
+    );
+    return;
+  }
 
   // Supabase: siempre red (datos en tiempo real)
   if (url.hostname.includes("supabase.co")) return;

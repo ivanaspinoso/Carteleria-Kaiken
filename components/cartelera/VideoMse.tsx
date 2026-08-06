@@ -10,6 +10,22 @@ export type ManifiestoMse = {
   tramos: TramoMse[];
 };
 
+/**
+ * Una placa lista para appendear.
+ *
+ * Las 13 fijas comparten `init` (mismo avcC, garantizado por preparar-mse.mjs).
+ * Las personalizadas traen el suyo: lo genera el encoder del navegador del
+ * dueño al subirlas, así que no puede coincidir byte a byte con el de x264. El
+ * player appendea el init solo cuando cambia, así que el decoder se reconfigura
+ * al entrar y al salir de una personalizada, no en cada placa.
+ */
+export type PlacaMse = {
+  // Identifica la placa para el overlay de texto.
+  clave: string;
+  segmento: string;
+  init: string;
+};
+
 // Cuántas placas mantener appendeadas por delante de la que se está viendo. Con
 // 2 alcanza para que nunca se quede sin buffer y no obliga a decidir el orden
 // con mucha anticipación (cuanto menos adelantado, antes se nota un cambio que
@@ -53,12 +69,12 @@ export default function VideoMse({
   onFalla,
 }: {
   manifiesto: ManifiestoMse;
-  // Slugs activos, en orden, como están en la base AHORA. Puede cambiar en
+  // Placas activas, en orden, como están en la base AHORA. Puede cambiar en
   // cualquier momento: el player lo lee al appendear la próxima placa.
-  orden: string[];
+  orden: PlacaMse[];
   poster?: string;
-  // Qué placa se está viendo (índice dentro de `orden` al momento de appendear).
-  onIndice: (slug: string) => void;
+  // Qué placa se está viendo (su `clave`).
+  onIndice: (clave: string) => void;
   // No se pudo: la pantalla cae al modo anterior.
   onFalla: () => void;
 }) {
@@ -98,15 +114,15 @@ export default function VideoMse({
     const url = URL.createObjectURL(ms);
     v.src = url;
 
-    // Segmentos crudos ya bajados (slug → bytes).
+    // Segmentos crudos ya bajados (url → bytes).
     const cache = new Map<string, ArrayBuffer>();
-    const bajar = async (slug: string): Promise<ArrayBuffer> => {
-      const hit = cache.get(slug);
+    const bajar = async (url: string): Promise<ArrayBuffer> => {
+      const hit = cache.get(url);
       if (hit) return hit;
-      const r = await fetch(`/placas/mse/${slug}.m4s`);
-      if (!r.ok) throw new Error(`no se pudo bajar ${slug}.m4s (${r.status})`);
+      const r = await fetch(url);
+      if (!r.ok) throw new Error(`no se pudo bajar ${url} (${r.status})`);
       const buf = await r.arrayBuffer();
-      cache.set(slug, buf);
+      cache.set(url, buf);
       // Cache chico: el TV no tiene RAM para las 13 crudas.
       while (cache.size > CACHE_MAX) {
         const primera = cache.keys().next().value;
@@ -134,15 +150,32 @@ export default function VideoMse({
     const finBuffer = (buffer: SourceBuffer) =>
       buffer.buffered.length ? buffer.buffered.end(buffer.buffered.length - 1) : 0;
 
+    // Qué init está cargado en el SourceBuffer ahora mismo. Solo se vuelve a
+    // appendear cuando la placa que viene usa otro (o sea: al entrar o salir de
+    // una personalizada). Appendearlo de gusto reconfiguraría el decoder.
+    let initActual: string | null = null;
+
     /** Appendea UNA placa al final de la línea de tiempo. */
     const appendearUna = async (buffer: SourceBuffer) => {
       const lista = ordenRef.current;
       if (lista.length === 0) return;
-      const slug = lista[proximo % lista.length];
+      const placa = lista[proximo % lista.length];
       proximo = (proximo + 1) % lista.length;
 
-      const bytes = await bajar(slug);
+      const bytes = await bajar(placa.segmento);
       if (!vivo) return;
+
+      if (placa.init !== initActual) {
+        const init = await bajar(placa.init);
+        if (!vivo) return;
+        await libre(buffer);
+        if (!vivo) return;
+        buffer.appendBuffer(init);
+        await libre(buffer);
+        if (!vivo) return;
+        initActual = placa.init;
+      }
+
       await libre(buffer);
       if (!vivo) return;
 
@@ -150,7 +183,7 @@ export default function VideoMse({
       buffer.appendBuffer(bytes);
       await libre(buffer);
       if (!vivo) return;
-      appendeados.push({ slug, ini, fin: finBuffer(buffer) });
+      appendeados.push({ slug: placa.clave, ini, fin: finBuffer(buffer) });
     };
 
     /** Libera lo ya reproducido para no crecer sin límite. */
@@ -177,15 +210,8 @@ export default function VideoMse({
         // cualquier orden sin recalcular nada.
         sb.mode = "sequence";
 
-        const rInit = await fetch("/placas/mse/init.mp4");
-        if (!rInit.ok) throw new Error(`init ${rInit.status}`);
-        const init = await rInit.arrayBuffer();
-        if (!vivo) return;
-        sb.appendBuffer(init);
-        await libre(sb);
-        if (!vivo) return;
-
-        // Arrancar con algo de colchón y recién ahí reproducir.
+        // El init lo appendea appendearUna() según la placa que toque; acá solo
+        // se llena el colchón inicial.
         for (let i = 0; i < ADELANTO && vivo; i++) await appendearUna(sb);
         if (!vivo) return;
 

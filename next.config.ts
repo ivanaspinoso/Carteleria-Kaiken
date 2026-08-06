@@ -25,6 +25,11 @@ const nextConfig: NextConfig = {
     // cookie viene de @supabase/ssr.
     "iceberg-js",
     "cookie",
+    // El muxer que arma el mp4 fragmentado al preparar una placa personalizada.
+    // Solo corre en el panel, pero se publica con `??`/`?.` y el chequeo de
+    // check-tv-compat es sobre TODOS los chunks emitidos, a propósito: si algún
+    // día ese código termina compartido con la cartelera, el TV muere entero.
+    "mp4-muxer",
   ],
   images: {
     remotePatterns: [

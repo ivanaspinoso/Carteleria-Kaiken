@@ -13,6 +13,11 @@ import {
 } from "@/lib/actions/placas";
 import { actualizarPrecio, actualizarGustosIncluidos } from "@/lib/actions/productos";
 import { validarArchivoPlaca, esVideoUrl, generarPosterVideo, FORMATOS_VIDEO } from "@/lib/cartelera/validarImagen";
+import {
+  recodificarPlaca,
+  soportaRecodificar,
+  type PlacaRecodificada,
+} from "@/lib/cartelera/recodificarPlaca";
 import { createClient } from "@/lib/supabase/client";
 import type { GrupoGustos } from "@/lib/cartelera/gustos";
 import GustosEditor from "./GustosEditor";
@@ -289,6 +294,8 @@ function UploadForm({ pantalla }: { pantalla: Pantalla }) {
   const [fin, setFin] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [warn, setWarn] = useState<string | null>(null);
+  // Progreso de la preparación del video (recodificado en este navegador).
+  const [preparando, setPreparando] = useState<string | null>(null);
 
   // Si cambia la pantalla seleccionada arriba, arranca el destino ahí (se puede
   // sobreescribir por upload con el selector de abajo).
@@ -339,8 +346,43 @@ function UploadForm({ pantalla }: { pantalla: Pantalla }) {
         // Si es video, el póster (primer cuadro) se genera en el navegador una
         // sola vez y se sube junto → la cartelera tapa el hueco de carga sin
         // negro en el TV. Si no se pudo, sigue sin póster.
-        const poster = FORMATOS_VIDEO.includes(file.type) ? await generarPosterVideo(file) : null;
+        const esVideo = FORMATOS_VIDEO.includes(file.type);
+        const poster = esVideo ? await generarPosterVideo(file) : null;
         const ext = (file.name.split(".").pop() || "png").toLowerCase();
+
+        // Si es video, preparar acá mismo la versión que las pantallas pueden
+        // reproducir DENTRO del flujo continuo. Sin esto la placa igual se sube
+        // y se ve, pero saca a la pantalla del modo fluido y vuelve el parpadeo
+        // entre placas. Si el navegador no puede, se sigue sin ella: es una
+        // mejora, no un requisito.
+        let preparado: PlacaRecodificada | null = null;
+        if (esVideo) {
+          try {
+            if (await soportaRecodificar()) {
+              preparado = await recodificarPlaca(file, (p) => {
+                setPreparando(
+                  p.fase === "recodificando"
+                    ? `Preparando el video para las pantallas… ${Math.round(p.avance * 100)}%`
+                    : "Preparando el video para las pantallas…"
+                );
+              });
+            } else {
+              setWarn(
+                "Este dispositivo no puede preparar el video. La placa se sube igual, " +
+                  "pero mientras esté activa las pantallas verticales van a mostrar un " +
+                  "parpadeo entre placas. Subila desde una computadora para evitarlo."
+              );
+            }
+          } catch {
+            setWarn(
+              "No se pudo preparar el video en este dispositivo. La placa se sube igual, " +
+                "pero mientras esté activa las pantallas verticales van a mostrar un " +
+                "parpadeo entre placas."
+            );
+          } finally {
+            setPreparando(null);
+          }
+        }
 
         for (const d of destinos) {
           const base = `${d}/${crypto.randomUUID()}`;
@@ -351,6 +393,31 @@ function UploadForm({ pantalla }: { pantalla: Pantalla }) {
           if (upErr) {
             setError(`Pantalla ${d}: no se pudo subir el archivo (${upErr.message})`);
             return;
+          }
+
+          // Los assets MSE van al lado del original, con el mismo nombre base:
+          // la cartelera los busca por convención, sin columna nueva en la base
+          // (que obligaría a una migración a mano en el SQL Editor).
+          if (preparado) {
+            const sub = async (nombreArchivo: string, cuerpo: Blob, tipo: string) =>
+              supabase.storage
+                .from("placas-personalizadas")
+                .upload(nombreArchivo, cuerpo, { contentType: tipo, upsert: false });
+            const [rInit, rSeg] = await Promise.all([
+              sub(`${base}.init.mp4`, preparado.init, "video/mp4"),
+              sub(`${base}.m4s`, preparado.segmento, "video/iso.segment"),
+            ]);
+            // Si alguno falla, se borra el otro: media preparación es peor que
+            // ninguna (la pantalla pediría un segmento sin su init).
+            if (rInit.error || rSeg.error) {
+              await supabase.storage
+                .from("placas-personalizadas")
+                .remove([`${base}.init.mp4`, `${base}.m4s`]);
+              setWarn(
+                "La placa se subió, pero no se pudo guardar la versión preparada: " +
+                  "mientras esté activa las pantallas van a mostrar un parpadeo entre placas."
+              );
+            }
           }
 
           let posterPath = "";
@@ -439,6 +506,13 @@ function UploadForm({ pantalla }: { pantalla: Pantalla }) {
 
       {warn && <p className="text-xs text-amber-600">⚠ {warn}</p>}
       {error && <p className="text-xs text-destructive">{error}</p>}
+      {/* El video se recodifica acá mismo antes de subirlo y tarda un rato; sin
+          este aviso parece que el panel se colgó. */}
+      {preparando && (
+        <p className="text-xs text-muted-foreground">
+          {preparando} <span className="opacity-70">No cierres esta pantalla.</span>
+        </p>
+      )}
 
       <button
         type="button"
@@ -446,7 +520,7 @@ function UploadForm({ pantalla }: { pantalla: Pantalla }) {
         disabled={isPending || !file}
         className="text-sm bg-primary text-primary-foreground rounded-lg px-5 py-3 sm:px-4 sm:py-1.5 font-medium disabled:opacity-50 active:scale-95 transition-transform"
       >
-        {isPending ? "Subiendo…" : "Subir placa"}
+        {isPending ? (preparando ? "Preparando…" : "Subiendo…") : "Subir placa"}
       </button>
     </div>
   );

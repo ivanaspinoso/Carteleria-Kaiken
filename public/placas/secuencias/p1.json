@@ -1,6 +1,6 @@
 {
   "pantalla": 1,
-  "generado": "2026-08-06T12:01:16.368Z",
+  "generado": "2026-08-06T15:28:29.922Z",
   "total": 80,
   "tramos": [
     {
@@ -8,11 +8,11 @@
       "duracion": 10
     },
     {
-      "slug": "despues-cole-budin",
+      "slug": "frappuccino",
       "duracion": 10
     },
     {
-      "slug": "frappuccino",
+      "slug": "despues-cole-budin",
       "duracion": 10
     },
     {

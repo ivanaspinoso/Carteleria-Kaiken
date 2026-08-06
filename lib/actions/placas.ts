@@ -140,9 +140,16 @@ export async function borrarPlacaPersonalizada(id: string): Promise<Resultado> {
     .eq("id", id)
     .maybeSingle();
 
-  // Borrar los archivos primero (video/imagen + póster); si falla, log pero
-  // igual borramos la fila.
-  const paths = [fila?.imagen_path, fila?.poster_path].filter(Boolean) as string[];
+  // Borrar los archivos primero (video/imagen + póster + los assets MSE, que se
+  // guardan al lado con el mismo nombre base); si falla, log pero igual borramos
+  // la fila.
+  const base = fila?.imagen_path?.replace(/\.[^./]+$/, "");
+  const paths = [
+    fila?.imagen_path,
+    fila?.poster_path,
+    base ? `${base}.m4s` : null,
+    base ? `${base}.init.mp4` : null,
+  ].filter(Boolean) as string[];
   if (paths.length > 0) {
     const { error: stErr } = await supabase.storage.from(BUCKET).remove(paths);
     if (stErr) console.error("No se pudo borrar el archivo de Storage:", stErr.message);
