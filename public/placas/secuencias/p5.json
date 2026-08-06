@@ -1,14 +1,10 @@
 {
   "pantalla": 5,
-  "generado": "2026-07-30T14:21:16.645Z",
-  "total": 20,
+  "generado": "2026-08-06T12:01:17.724Z",
+  "total": 10,
   "tramos": [
     {
       "slug": "seguinos",
-      "duracion": 10
-    },
-    {
-      "slug": "qr-delivery",
       "duracion": 10
     }
   ]

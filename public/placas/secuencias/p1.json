@@ -1,18 +1,10 @@
 {
   "pantalla": 1,
-  "generado": "2026-07-30T14:39:29.412Z",
-  "total": 110,
+  "generado": "2026-08-06T12:01:16.368Z",
+  "total": 80,
   "tramos": [
     {
-      "slug": "antojo-de-tarde",
-      "duracion": 10
-    },
-    {
       "slug": "promo-especial",
-      "duracion": 10
-    },
-    {
-      "slug": "despues-cole-tostado",
       "duracion": 10
     },
     {
@@ -21,10 +13,6 @@
     },
     {
       "slug": "frappuccino",
-      "duracion": 10
-    },
-    {
-      "slug": "novedad-del-mes",
       "duracion": 10
     },
     {
