@@ -1,0 +1,73 @@
+{
+  "generado": "2026-08-06T12:53:03.684Z",
+  "avcc_sha1": "394c31f1bdc6c7b44e554ee8d33a1b8cc995c406",
+  "init_bytes": 786,
+  "codec": "video/mp4; codecs=\"avc1.640028\"",
+  "tramos": [
+    {
+      "slug": "affogato",
+      "duracion": 10,
+      "bytes": 215451
+    },
+    {
+      "slug": "antojo-de-tarde",
+      "duracion": 10,
+      "bytes": 372807
+    },
+    {
+      "slug": "cuartos",
+      "duracion": 10,
+      "bytes": 156734
+    },
+    {
+      "slug": "despues-cole-budin",
+      "duracion": 10,
+      "bytes": 404499
+    },
+    {
+      "slug": "despues-cole-tostado",
+      "duracion": 10,
+      "bytes": 378219
+    },
+    {
+      "slug": "diez-off",
+      "duracion": 10,
+      "bytes": 950147
+    },
+    {
+      "slug": "frappuccino",
+      "duracion": 10,
+      "bytes": 166161
+    },
+    {
+      "slug": "gusto-del-dia",
+      "duracion": 10,
+      "bytes": 677225
+    },
+    {
+      "slug": "kilo-kaiken",
+      "duracion": 10,
+      "bytes": 494070
+    },
+    {
+      "slug": "novedad-del-mes",
+      "duracion": 10,
+      "bytes": 398604
+    },
+    {
+      "slug": "promo-especial",
+      "duracion": 10,
+      "bytes": 538630
+    },
+    {
+      "slug": "qr-delivery",
+      "duracion": 10,
+      "bytes": 197835
+    },
+    {
+      "slug": "seguinos",
+      "duracion": 10,
+      "bytes": 719117
+    }
+  ]
+}

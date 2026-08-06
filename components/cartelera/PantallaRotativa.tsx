@@ -13,6 +13,7 @@ import { COMPONENTES_PLACA, type PlacaProps } from "./placas";
 import { ModoOverlay } from "./placas/PlacaVideo";
 import VideoEngine, { type MediaTipo } from "./VideoEngine";
 import VideoSecuencia, { type Tramo } from "./VideoSecuencia";
+import VideoMse, { type ManifiestoMse } from "./VideoMse";
 
 interface Props {
   datos: DatosPantalla;
@@ -254,6 +255,45 @@ export default function PantallaRotativa({ datos, videoLayer, rotacion = 0, vp }
     void registrarSoporteMse(datos.pantalla.id);
   }, [datos.pantalla.id]);
 
+  // ── MODO MSE: el <video> se abre una vez y se le van appendeando las placas.
+  // Es el único modo en el que el ORDEN no está horneado: activar, desactivar o
+  // reordenar desde el panel entra en el próximo límite de placa, sin recargar
+  // nada. Si no está disponible, se cae al mp4 pegado (fluido pero horneado) y
+  // de ahí al modo de a una placa.
+  const [manifiestoMse, setManifiestoMse] = useState<ManifiestoMse | null>(null);
+  const [mseFallo, setMseFallo] = useState(false);
+  const [slugMse, setSlugMse] = useState<string | null>(null);
+
+  useEffect(() => {
+    let vivo = true;
+    fetch("/placas/mse/_mse.json")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((m) => {
+        if (vivo && m?.tramos?.length && m?.codec) setManifiestoMse(m);
+      })
+      .catch(() => {});
+    return () => {
+      vivo = false;
+    };
+  }, []);
+
+  const usarMse = useMemo(() => {
+    if (!manifiestoMse || mseFallo) return false;
+    // Las personalizadas las sube el dueño en cualquier formato: no comparten el
+    // init segment, así que meterlas acá reconfiguraría el decoder.
+    if (items.some((i) => i.kind !== "fija")) return false;
+    // Toda placa activa tiene que tener su segmento preparado.
+    const conSegmento = new Set(manifiestoMse.tramos.map((t) => t.slug));
+    return items.every((it) => it.kind === "fija" && conSegmento.has(it.data.slug));
+  }, [manifiestoMse, mseFallo, items]);
+
+  // El orden que consume el player. Sale de la base, así que cambiarlo en el
+  // panel lo cambia acá sin remontar el <video>.
+  const ordenMse = useMemo(
+    () => items.filter((i) => i.kind === "fija").map((i) => (i.kind === "fija" ? i.data.slug : "")),
+    [items]
+  );
+
   const [manifiesto, setManifiesto] = useState<{ tramos: Tramo[] } | null>(null);
   const [secuenciaFallo, setSecuenciaFallo] = useState(false);
   const [indiceSecuencia, setIndiceSecuencia] = useState(0);
@@ -290,6 +330,36 @@ export default function PantallaRotativa({ datos, videoLayer, rotacion = 0, vp }
 
   if (len === 0) {
     return <div style={{ width: "100%", height: "100%", backgroundColor: "#000" }} />;
+  }
+
+  if (usarMse && manifiestoMse) {
+    // El overlay sigue al slug que el player dice estar mostrando (no al reloj):
+    // así el texto no se puede adelantar a la placa.
+    const itemMse = items.find((i) => i.kind === "fija" && i.data.slug === slugMse) ?? items[0];
+    const overlayMse = buildOverlay(itemMse);
+    const reproductor = (
+      <VideoMse
+        manifiesto={manifiestoMse}
+        orden={ordenMse}
+        poster={posterDe(items[0])}
+        onIndice={setSlugMse}
+        onFalla={() => setMseFallo(true)}
+      />
+    );
+    return (
+      <div ref={rootRef} style={{ width: "100%", height: "100%", position: "relative", overflow: "hidden" }}>
+        {videoLayer ? createPortal(reproductor, videoLayer) : reproductor}
+        {montado && overlayMse && (
+          <ModoOverlay.Provider value={true}>
+            {/* Sin fundidos: el video no se corta nunca, el texto cambia de
+                golpe justo en el límite, como en el diseño. */}
+            <div key={itemMse.key} style={{ position: "absolute", inset: 0 }}>
+              {overlayMse}
+            </div>
+          </ModoOverlay.Provider>
+        )}
+      </div>
+    );
   }
 
   if (usarSecuencia && manifiesto) {

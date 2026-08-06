@@ -1,4 +1,4 @@
-const CACHE_VERSION = "v31";
+const CACHE_VERSION = "v32";
 const CACHE_STATIC = `kaiken-static-${CACHE_VERSION}`;
 const CACHE_PAGES = `kaiken-pages-${CACHE_VERSION}`;
 const ALL_CACHES = [CACHE_STATIC, CACHE_PAGES];
@@ -62,6 +62,29 @@ self.addEventListener("fetch", (event) => {
   // (Los .mp4 NO se cachean acá: las Smart TV los piden con Range y devolverles
   // una respuesta 200 completa desde el cache rompe la reproducción.)
   if (url.pathname.startsWith("/placas/posters/")) {
+    event.respondWith(
+      caches.match(request).then(
+        (cached) =>
+          cached ??
+          fetch(request).then((res) => {
+            const copia = res.clone();
+            caches
+              .open(CACHE_STATIC)
+              .then((c) => c.put(request, copia))
+              .catch(() => {});
+            return res;
+          })
+      )
+    );
+    return;
+  }
+
+  // Segmentos MSE (init.mp4 + los .m4s de cada placa): cache-first sin más
+  // vueltas. A diferencia de los mp4 sueltos, estos NUNCA se piden con Range:
+  // el player los baja enteros con fetch() y se los pasa a appendBuffer(). Que
+  // salgan del cache es justamente lo que hace que appendear la próxima placa
+  // no dependa de la red. Se invalidan al bumpear CACHE_VERSION.
+  if (url.pathname.startsWith("/placas/mse/")) {
     event.respondWith(
       caches.match(request).then(
         (cached) =>
