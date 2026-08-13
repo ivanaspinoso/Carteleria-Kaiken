@@ -23,9 +23,12 @@ export default async function Pantalla2Page() {
   ] = await Promise.all([
     supabase.from("categorias").select("*").in("tipo", ["helado-clasico", "helado-especial"]).eq("activa", true).order("orden"),
     supabase.from("productos").select("*").order("orden"),
-    supabase.from("pantallas").select("ultima_conex, activa"),
+    supabase.from("pantallas").select("id, template, ultima_conex, activa"),
     supabase.from("pantallas_imagen").select("*").eq("pantalla_id", PANTALLA_ID).maybeSingle(),
   ]);
+
+  const enModoImagen =
+    (pantallas ?? []).find(p => p.id === PANTALLA_ID)?.template === "imagen-unica";
 
   const catIds = new Set((categorias ?? []).map(c => c.id));
   const productos = (todosProductos ?? []).filter(p => catIds.has(p.categoria_id));
@@ -57,20 +60,29 @@ export default async function Pantalla2Page() {
       <div>
         <h1 className="text-2xl font-bold">Pantalla 2 — Sabores</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Esta pantalla muestra una sola imagen, la que subas acá.
+          {enModoImagen
+            ? "Esta pantalla muestra una sola imagen, la que subas acá."
+            : "Esta pantalla se arma sola con los sabores cargados. Podés pasarla a modo imagen desde acá."}
         </p>
       </div>
 
-      <ImagenPantallaAdmin pantallaId={PANTALLA_ID} actual={imagen ?? null} />
+      <ImagenPantallaAdmin
+        pantallaId={PANTALLA_ID}
+        actual={imagen ?? null}
+        enModoImagen={enModoImagen}
+        queMuestraAutomatico="los sabores clásicos y especiales cargados"
+      />
 
-      {/* Los sabores ya no se dibujan en la Pantalla 2, pero siguen en uso en
-          otras pantallas — por eso quedan editables, plegados para no confundir. */}
-      <details className="rounded-xl border bg-card">
+      {/* En modo imagen los sabores no dibujan esta pantalla, pero siguen en uso
+          en otras — por eso quedan editables, plegados para no confundir. Si la
+          pantalla vuelve a automático, son otra vez lo que se ve en el TV. */}
+      <details className="rounded-xl border bg-card" open={!enModoImagen}>
         <summary className="cursor-pointer select-none px-4 py-3 text-sm font-semibold">
           Editar sabores
           <span className="block text-xs font-normal text-muted-foreground mt-0.5">
-            Ya no se muestran en la Pantalla 2. Se siguen usando en el Gusto del día
-            (pantallas verticales) y en los gustos del Kilo Kaikén.
+            {enModoImagen
+              ? "Ahora no se muestran en la Pantalla 2 (está en modo imagen), pero se siguen usando en el Gusto del día (pantallas verticales) y en los gustos del Kilo Kaikén."
+              : "Es lo que se ve hoy en la Pantalla 2. También alimentan el Gusto del día (pantallas verticales) y los gustos del Kilo Kaikén."}
           </span>
         </summary>
         <div className="px-4 pb-4 pt-1">

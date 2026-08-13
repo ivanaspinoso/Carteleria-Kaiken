@@ -6,9 +6,11 @@ import { IceCream, Coffee, Cake, Tag, Monitor, History, Images, type LucideIcon 
 import LogoutButton from "./LogoutButton";
 
 const NAV_ITEMS: { href: string; label: string; Icon: LucideIcon }[] = [
-  { href: "/sabores",   label: "Pantalla 2 - Sabores (imagen)", Icon: IceCream },
-  { href: "/cafeteria", label: "Cafetería", Icon: Coffee    },
-  { href: "/postres",   label: "Postres",   Icon: Cake      },
+  // Las tres horizontales (P2, P3, P4) se numeran para que se vea de una cuál
+  // TV toca cada pestaña: las tres pueden mostrar una imagen subida a mano.
+  { href: "/sabores",   label: "P2 - Sabores",   Icon: IceCream },
+  { href: "/postres",   label: "P3 - Postres",   Icon: Cake     },
+  { href: "/cafeteria", label: "P4 - Cafetería", Icon: Coffee   },
   { href: "/promos",    label: "Promos",    Icon: Tag       },
   { href: "/placas",    label: "Placas",    Icon: Images    },
   { href: "/pantallas", label: "Pantallas", Icon: Monitor   },

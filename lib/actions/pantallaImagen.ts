@@ -2,11 +2,87 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import type { TemplatePantalla } from "@/lib/types";
 import { MAX_BYTES_PANTALLA } from "@/lib/cartelera/validarImagen";
 
 export type Resultado = { error: string } | { ok: true };
 
 const BUCKET = "pantallas-imagen";
+
+/**
+ * Página del admin desde la que se sube la imagen de cada pantalla horizontal.
+ * Se usa para revalidar la ruta correcta: sin esto, subir desde /postres
+ * revalidaba /sabores y el panel seguía mostrando la imagen vieja hasta un
+ * refresh a mano.
+ */
+const PAGINA_ADMIN: Record<number, string> = {
+  2: "/sabores",
+  3: "/postres",
+  4: "/cafeteria",
+};
+
+/**
+ * Template "automático" de cada pantalla horizontal: el que dibuja el contenido
+ * a partir de los productos cargados. Es a lo que se vuelve al salir del modo
+ * imagen, y está acá (server) a propósito: el cliente NUNCA manda un template,
+ * solo pide "imagen" o "automático". Así una pantalla no puede terminar con un
+ * template que no le corresponde ni con uno inventado desde el navegador.
+ */
+const TEMPLATE_AUTOMATICO: Record<number, TemplatePantalla> = {
+  2: "sabores-clasicos-especiales",
+  3: "tamanos-postres",
+  4: "cafeteria-pasteleria",
+};
+
+/**
+ * Cambia una pantalla horizontal entre "modo imagen" y "modo automático".
+ *
+ * Es el interruptor que antes había que correr a mano en el SQL Editor de
+ * Supabase (supabase/activar-horizontales-imagen.sql). El cambio sale al TV del
+ * local en segundos por realtime, así que se confirma en el cliente antes de
+ * llamar acá.
+ *
+ * Ida y vuelta son simétricos y no destruyen nada: los productos, precios y
+ * stock nunca se tocan, y la imagen subida queda guardada en su tabla. Volver
+ * al modo automático y regresar al de imagen deja todo como estaba.
+ */
+export async function cambiarModoPantalla(formData: FormData): Promise<Resultado> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "No autenticado" };
+
+  const pantallaId = Number(formData.get("pantalla_id"));
+  const modo = String(formData.get("modo") ?? "");
+
+  const templateAuto = TEMPLATE_AUTOMATICO[pantallaId];
+  if (!templateAuto) return { error: "Esa pantalla no tiene modo imagen" };
+  if (modo !== "imagen" && modo !== "automatico") return { error: "Modo inválido" };
+
+  // Pasar a modo imagen SIN imagen subida dejaría el TV del local mostrando el
+  // cartel de "No hay imagen cargada". Se corta acá.
+  if (modo === "imagen") {
+    const { data: img } = await supabase
+      .from("pantallas_imagen")
+      .select("pantalla_id")
+      .eq("pantalla_id", pantallaId)
+      .maybeSingle();
+    if (!img) {
+      return { error: "Primero subí una imagen: si no, el TV queda con un cartel de aviso." };
+    }
+  }
+
+  const { error: updErr } = await supabase
+    .from("pantallas")
+    .update({ template: modo === "imagen" ? "imagen-unica" : templateAuto })
+    .eq("id", pantallaId);
+
+  if (updErr) return { error: "No se pudo cambiar el modo de la pantalla" };
+
+  const pagina = PAGINA_ADMIN[pantallaId];
+  if (pagina) revalidatePath(pagina);
+  revalidatePath("/pantallas");
+  return { ok: true };
+}
 
 /**
  * Registra (o reemplaza) la imagen única de una pantalla.
@@ -90,6 +166,7 @@ export async function subirImagenPantalla(formData: FormData): Promise<Resultado
     if (delErr) console.error("No se pudo borrar la imagen anterior:", delErr.message);
   }
 
-  revalidatePath("/sabores");
+  const pagina = PAGINA_ADMIN[pantallaId];
+  if (pagina) revalidatePath(pagina);
   return { ok: true };
 }
