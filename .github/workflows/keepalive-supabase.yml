@@ -1,0 +1,106 @@
+name: Keep-alive Supabase
+
+# El plan Free de Supabase pausa el proyecto tras ~7 dias sin queries.
+# Este workflow hace una consulta diaria a la base de la cartelera
+# (proyecto "cartelera kaiken nuevo!") para que nunca llegue a ese umbral.
+#
+# Ademas, GitHub desactiva los workflows programados tras 60 dias sin
+# actividad en el repositorio. Por eso el job "mantener-repo-activo"
+# commitea un sello de tiempo cada 45 dias.
+#
+# Secrets necesarios (Settings > Secrets and variables > Actions):
+#   SUPABASE_URL       -> https://dgwudphzhxhewpniuqhy.supabase.co
+#   SUPABASE_ANON_KEY  -> anon / publishable key del proyecto
+
+on:
+  schedule:
+    # Diario 03:23 UTC (00:23 en Argentina). Minuto no-redondo a proposito.
+    - cron: '23 3 * * *'
+  workflow_dispatch: # permite correrlo a mano desde la pestania Actions
+
+concurrency:
+  group: keepalive-supabase
+  cancel-in-progress: false
+
+jobs:
+  ping:
+    name: Consulta a la base
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Consultar Supabase (3 intentos)
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${SUPABASE_URL:-}" ] || [ -z "${SUPABASE_ANON_KEY:-}" ]; then
+            echo "::error::Faltan los secrets SUPABASE_URL y/o SUPABASE_ANON_KEY."
+            exit 1
+          fi
+
+          # Consulta real contra PostgREST (no /health): tiene que tocar la base.
+          url="${SUPABASE_URL%/}/rest/v1/pantallas?select=*&limit=1"
+
+          codigo=""
+          for intento in 1 2 3; do
+            rm -f respuesta.json
+            codigo=$(curl -sS -m 30 -o respuesta.json -w '%{http_code}' "$url" \
+              -H "apikey: ${SUPABASE_ANON_KEY}" \
+              -H "Authorization: Bearer ${SUPABASE_ANON_KEY}") || codigo="000"
+
+            if [ "$codigo" = "200" ]; then
+              echo "OK - la base respondio 200 en el intento $intento."
+              exit 0
+            fi
+
+            echo "Intento $intento fallo (HTTP $codigo)."
+            head -c 300 respuesta.json 2>/dev/null || true
+            echo
+            if [ "$intento" -lt 3 ]; then sleep 20; fi
+          done
+
+          echo "::error::Supabase no respondio 200 tras 3 intentos (ultimo: HTTP $codigo). Si es 000, el proyecto puede estar PAUSADO: revisar https://supabase.com/dashboard"
+          exit 1
+
+  mantener-repo-activo:
+    name: Sello de actividad del repo
+    runs-on: ubuntu-latest
+    needs: ping
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Commitear sello si pasaron mas de 45 dias
+        run: |
+          set -euo pipefail
+          sello=".github/keepalive-stamp.txt"
+
+          ultimo=$(git log -1 --format=%ct -- "$sello" 2>/dev/null || true)
+          if [ -z "$ultimo" ]; then ultimo=0; fi
+          dias=$(( ( $(date +%s) - ultimo ) / 86400 ))
+          echo "Ultimo sello: hace $dias dias."
+
+          if [ "$dias" -lt 45 ]; then
+            echo "Todavia no hace falta."
+            exit 0
+          fi
+
+          mkdir -p "$(dirname "$sello")"
+          date -u +"Ultimo keep-alive: %Y-%m-%d %H:%M UTC" > "$sello"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "$sello"
+
+          if git diff --cached --quiet; then
+            echo "El sello no cambio."
+            exit 0
+          fi
+
+          git commit -m "chore(keepalive): sello de actividad $(date -u +%Y-%m-%d) [skip ci]"
+          git push
